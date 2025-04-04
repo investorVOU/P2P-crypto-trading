@@ -1,10 +1,9 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-// Define API base URL
-const API_URL = '/api';
+const API_URL = 'http://localhost:8000/api';
 
-// Async thunks for authentication
+// Async thunks
 export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
@@ -15,7 +14,7 @@ export const login = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Login failed. Please check your credentials.'
+        error.response?.data?.message || 'Failed to login. Please try again.'
       );
     }
   }
@@ -31,7 +30,7 @@ export const register = createAsyncThunk(
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Registration failed. Please try again.'
+        error.response?.data?.message || 'Failed to register. Please try again.'
       );
     }
   }
@@ -44,10 +43,10 @@ export const logout = createAsyncThunk(
       await axios.post(`${API_URL}/logout`, {}, {
         withCredentials: true
       });
-      return null;
+      return true;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to logout.'
+        error.response?.data?.message || 'Failed to logout. Please try again.'
       );
     }
   }
@@ -62,109 +61,95 @@ export const checkAuth = createAsyncThunk(
       });
       return response.data;
     } catch (error) {
-      // Not authenticated is an expected case, not an error
-      if (error.response?.status === 401) {
-        return null;
-      }
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to check authentication status.'
+        error.response?.status === 401
+          ? 'Authentication expired or invalid'
+          : 'Failed to verify authentication. Please try again.'
       );
     }
   }
 );
 
-// Initial state
 const initialState = {
   user: null,
   isAuthenticated: false,
-  isLoading: false,
-  error: null,
-  isAdmin: false
+  loading: false,
+  error: null
 };
 
-// Auth slice
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    resetAuthError: (state) => {
+    clearError: (state) => {
       state.error = null;
-    },
+    }
   },
   extraReducers: (builder) => {
     builder
-      // Login cases
+      // Login
       .addCase(login.pending, (state) => {
-        state.isLoading = true;
+        state.loading = true;
         state.error = null;
       })
       .addCase(login.fulfilled, (state, action) => {
-        state.isLoading = false;
+        state.loading = false;
         state.isAuthenticated = true;
         state.user = action.payload;
-        state.isAdmin = action.payload.role === 'admin';
-        state.error = null;
       })
       .addCase(login.rejected, (state, action) => {
-        state.isLoading = false;
-        state.isAuthenticated = false;
-        state.user = null;
+        state.loading = false;
         state.error = action.payload;
       })
       
-      // Register cases
+      // Register
       .addCase(register.pending, (state) => {
-        state.isLoading = true;
+        state.loading = true;
         state.error = null;
       })
       .addCase(register.fulfilled, (state, action) => {
-        state.isLoading = false;
+        state.loading = false;
         state.isAuthenticated = true;
         state.user = action.payload;
-        state.isAdmin = action.payload.role === 'admin';
-        state.error = null;
       })
       .addCase(register.rejected, (state, action) => {
-        state.isLoading = false;
+        state.loading = false;
         state.error = action.payload;
       })
       
-      // Logout cases
+      // Logout
       .addCase(logout.pending, (state) => {
-        state.isLoading = true;
-      })
-      .addCase(logout.fulfilled, (state) => {
-        state.isLoading = false;
-        state.isAuthenticated = false;
-        state.user = null;
-        state.isAdmin = false;
+        state.loading = true;
         state.error = null;
       })
+      .addCase(logout.fulfilled, (state) => {
+        state.loading = false;
+        state.isAuthenticated = false;
+        state.user = null;
+      })
       .addCase(logout.rejected, (state, action) => {
-        state.isLoading = false;
+        state.loading = false;
         state.error = action.payload;
       })
       
-      // CheckAuth cases
+      // Check Auth
       .addCase(checkAuth.pending, (state) => {
-        state.isLoading = true;
+        state.loading = true;
+        state.error = null;
       })
       .addCase(checkAuth.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.isAuthenticated = !!action.payload;
+        state.loading = false;
+        state.isAuthenticated = true;
         state.user = action.payload;
-        state.isAdmin = action.payload?.role === 'admin' || false;
       })
-      .addCase(checkAuth.rejected, (state, action) => {
-        state.isLoading = false;
+      .addCase(checkAuth.rejected, (state) => {
+        state.loading = false;
         state.isAuthenticated = false;
         state.user = null;
-        state.isAdmin = false;
-        state.error = action.payload;
       });
-  },
+  }
 });
 
-export const { resetAuthError } = authSlice.actions;
+export const { clearError } = authSlice.actions;
 
 export default authSlice.reducer;

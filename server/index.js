@@ -81,7 +81,7 @@ app.use('/api/wallet', isAuthenticated, walletRoutes);
 app.use('/api/admin', isAuthenticated, isAdmin, adminRoutes);
 
 // Serve static assets
-app.use(express.static(path.join(__dirname, '..')));
+app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

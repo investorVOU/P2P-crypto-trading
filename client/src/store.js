@@ -1,18 +1,12 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './features/auth/authSlice';
-import tradesReducer from './features/trades/tradesSlice';
-import walletReducer from './features/wallet/walletSlice';
-import uiReducer from './features/ui/uiSlice';
 
-export const store = configureStore({
+const store = configureStore({
   reducer: {
     auth: authReducer,
-    trades: tradesReducer,
-    wallet: walletReducer,
-    ui: uiReducer,
+    // Add other reducers here
   },
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      serializableCheck: false,
-    }),
+  devTools: process.env.NODE_ENV !== 'production',
 });
+
+export default store;

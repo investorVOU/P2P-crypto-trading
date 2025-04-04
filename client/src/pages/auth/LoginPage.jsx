@@ -1,219 +1,251 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { login, resetAuthError } from '../../features/auth/authSlice';
-import { addNotification } from '../../features/ui/uiSlice';
+import { useSelector, useDispatch } from 'react-redux';
+import { login } from '../../features/auth/authSlice';
+import Layout from '../../components/Layout';
 
-const LoginPage = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  
+function LoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { isLoading, error } = useSelector((state) => state.auth);
+  const { isAuthenticated, loading, error } = useSelector((state) => state.auth) || {};
   
+  const [formData, setFormData] = useState({
+    username: '',
+    password: ''
+  });
+
+  // Redirect if already logged in
   useEffect(() => {
-    // Reset any auth errors when mounting component
-    dispatch(resetAuthError());
-  }, [dispatch]);
-  
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!username || !password) {
-      return dispatch(
-        addNotification({
-          type: 'error',
-          title: 'Validation Error',
-          message: 'Please enter both username and password.',
-        })
-      );
+    if (isAuthenticated) {
+      navigate('/dashboard');
     }
-    
-    try {
-      const resultAction = await dispatch(login({ username, password }));
-      if (login.fulfilled.match(resultAction)) {
-        // Successfully logged in
-        dispatch(addNotification({
-          type: 'success',
-          title: 'Login Successful',
-          message: 'Welcome back to P2P Trade!',
-        }));
-        navigate('/dashboard');
-      }
-    } catch (err) {
-      console.error('Login error:', err);
-    }
+  }, [isAuthenticated, navigate]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
-  
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    dispatch(login(formData));
+  };
+
   return (
-    <div className="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h2 className="mt-6 text-3xl font-extrabold text-secondary-900 dark:text-white">Sign in to your account</h2>
-          <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-400">
-            Or{' '}
-            <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400">
-              create a new account
-            </Link>
-          </p>
-        </div>
-        
-        <div className="mt-8 bg-white dark:bg-secondary-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {error && (
-            <div className="mb-4 bg-danger-50 dark:bg-danger-900 dark:bg-opacity-10 border-l-4 border-danger-500 p-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-danger-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-danger-700 dark:text-danger-400">{error}</p>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
-                Username
-              </label>
-              <div className="mt-1">
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  autoComplete="username"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="form-input"
-                  placeholder="Enter your username"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
-                Password
-              </label>
-              <div className="mt-1">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="form-input"
-                  placeholder="Enter your password"
-                />
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded dark:border-secondary-600 dark:bg-secondary-800"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-secondary-700 dark:text-secondary-300">
-                  Remember me
-                </label>
-              </div>
-              
-              <div className="text-sm">
-                <Link
-                  to="/forgot-password"
-                  className="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400"
-                >
-                  Forgot your password?
+    <Layout>
+      <div className="min-h-screen flex flex-col lg:flex-row">
+        {/* Form Column */}
+        <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-20 xl:px-24 bg-white">
+          <div className="mx-auto w-full max-w-sm">
+            <div className="text-center">
+              <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+                Sign in to your account
+              </h2>
+              <p className="mt-2 text-sm text-gray-600">
+                Or{' '}
+                <Link to="/register" className="font-medium text-orange-600 hover:text-orange-500">
+                  create a new account
                 </Link>
-              </div>
+              </p>
             </div>
-            
-            <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full btn btn-primary py-2"
-              >
-                {isLoading ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
+
+            {error && (
+              <div className="mt-4 bg-red-50 border-l-4 border-red-500 p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                     </svg>
-                    Signing in...
-                  </span>
-                ) : (
-                  'Sign in'
-                )}
-              </button>
-            </div>
-          </form>
-          
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-secondary-300 dark:border-secondary-600"></div>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-700">{error}</p>
+                  </div>
+                </div>
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white dark:bg-secondary-800 text-secondary-600 dark:text-secondary-400">
-                  Or continue with
-                </span>
-              </div>
-            </div>
-            
-            <div className="mt-6 grid grid-cols-2 gap-3">
+            )}
+
+            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
               <div>
-                <a
-                  href="#"
-                  className="w-full inline-flex justify-center py-2 px-4 border border-secondary-300 dark:border-secondary-600 rounded-md shadow-sm bg-white dark:bg-secondary-700 text-sm font-medium text-secondary-700 dark:text-secondary-200 hover:bg-secondary-50 dark:hover:bg-secondary-600"
-                >
-                  <svg className="h-5 w-5 text-[#4285F4]" viewBox="0 0 24 24" fill="currentColor">
-                    <path
-                      d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"
-                    />
-                  </svg>
-                  <span className="ml-2">Google</span>
-                </a>
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                  Username
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="username"
+                    name="username"
+                    type="text"
+                    autoComplete="username"
+                    required
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
+                    value={formData.username}
+                    onChange={handleChange}
+                  />
+                </div>
               </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-orange-500 focus:border-orange-500 sm:text-sm"
+                    value={formData.password}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    id="remember_me"
+                    name="remember_me"
+                    type="checkbox"
+                    className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="remember_me" className="ml-2 block text-sm text-gray-900">
+                    Remember me
+                  </label>
+                </div>
+
+                <div className="text-sm">
+                  <a href="#" className="font-medium text-orange-600 hover:text-orange-500">
+                    Forgot your password?
+                  </a>
+                </div>
+              </div>
+
+              <div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 ${
+                    loading ? 'opacity-75 cursor-not-allowed' : ''
+                  }`}
+                >
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Signing in...
+                    </>
+                  ) : (
+                    'Sign in'
+                  )}
+                </button>
+              </div>
+            </form>
+
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                </div>
+              </div>
+
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <div>
+                  <a
+                    href="#"
+                    className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                  >
+                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                      <path
+                        fillRule="evenodd"
+                        d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </a>
+                </div>
+
+                <div>
+                  <a
+                    href="#"
+                    className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                  >
+                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                      <path
+                        fillRule="evenodd"
+                        d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Hero Column */}
+        <div className="hidden lg:block lg:flex-1 bg-orange-600 relative">
+          <div className="absolute inset-0 flex flex-col justify-center p-12 text-white">
+            <div>
+              <img 
+                src="/assets/logo-white.svg"
+                alt="Timbuktu Logo"
+                className="h-10 mb-8" 
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.style.display = 'none';
+                }}
+              />
               
-              <div>
-                <a
-                  href="#"
-                  className="w-full inline-flex justify-center py-2 px-4 border border-secondary-300 dark:border-secondary-600 rounded-md shadow-sm bg-white dark:bg-secondary-700 text-sm font-medium text-secondary-700 dark:text-secondary-200 hover:bg-secondary-50 dark:hover:bg-secondary-600"
-                >
-                  <svg className="h-5 w-5 text-[#24292F] dark:text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12,2A10,10 0 0,0 2,12C2,16.42 4.87,20.17 8.84,21.5C9.34,21.58 9.5,21.27 9.5,21C9.5,20.77 9.5,20.14 9.5,19.31C6.73,19.91 6.14,17.97 6.14,17.97C5.68,16.81 5.03,16.5 5.03,16.5C4.12,15.88 5.1,15.9 5.1,15.9C6.1,15.97 6.63,16.93 6.63,16.93C7.5,18.45 8.97,18 9.54,17.76C9.63,17.11 9.89,16.67 10.17,16.42C7.95,16.17 5.62,15.31 5.62,11.5C5.62,10.39 6,9.5 6.65,8.79C6.55,8.54 6.2,7.5 6.75,6.15C6.75,6.15 7.59,5.88 9.5,7.17C10.29,6.95 11.15,6.84 12,6.84C12.85,6.84 13.71,6.95 14.5,7.17C16.41,5.88 17.25,6.15 17.25,6.15C17.8,7.5 17.45,8.54 17.35,8.79C18,9.5 18.38,10.39 18.38,11.5C18.38,15.32 16.04,16.16 13.81,16.41C14.17,16.72 14.5,17.33 14.5,18.26C14.5,19.6 14.5,20.68 14.5,21C14.5,21.27 14.66,21.59 15.17,21.5C19.14,20.16 22,16.42 22,12A10,10 0 0,0 12,2Z" />
-                  </svg>
-                  <span className="ml-2">GitHub</span>
-                </a>
+              <h2 className="text-3xl font-bold mb-6">
+                Buy & Sell Blockchain Tokens in minutes
+              </h2>
+              
+              <p className="text-lg mb-8 opacity-90">
+                The trusted P2P platform for trading cryptocurrencies with local payment methods. 
+                Trade safely with our secure escrow system.
+              </p>
+              
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <div className="bg-white/20 rounded-full p-2 mr-3">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span>Non-Custodial Platform</span>
+                </div>
+                
+                <div className="flex items-center">
+                  <div className="bg-white/20 rounded-full p-2 mr-3">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span>Fast & Secure Transactions</span>
+                </div>
+                
+                <div className="flex items-center">
+                  <div className="bg-white/20 rounded-full p-2 mr-3">
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span>Fully Peer to Peer</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </Layout>
   );
-};
+}
 
 export default LoginPage;
