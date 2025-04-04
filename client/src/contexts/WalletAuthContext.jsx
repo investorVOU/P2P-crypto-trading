@@ -1,242 +1,151 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import axios from 'axios';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
+import { ethers } from 'ethers';
 
-// Create context
-const WalletAuthContext = createContext(null);
-
-// Get ethers dynamically
-let ethers = null;
+export const WalletAuthContext = createContext();
 
 export const WalletAuthProvider = ({ children }) => {
-  const dispatch = useDispatch();
-  const user = useSelector(state => state.auth.user);
-  const [loading, setLoading] = useState(true);
-  const [walletAddress, setWalletAddress] = useState('');
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
-  const [walletError, setWalletError] = useState(null);
+  const [currentAccount, setCurrentAccount] = useState(null);
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
+  // Check if wallet is already connected and user is authenticated
   useEffect(() => {
-    async function loadEthers() {
+    const checkWalletConnection = async () => {
       try {
-        const ethersModule = await import('ethers');
-        ethers = ethersModule;
-        console.log('Ethers library loaded in context');
+        setIsLoading(true);
+        
+        // Check if we have a connected account in local storage
+        const storedAccount = localStorage.getItem('connectedWallet');
+        
+        if (storedAccount) {
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const accounts = await provider.listAccounts();
+          
+          // Only set the current account if it matches the stored one
+          if (accounts.length > 0 && accounts[0].address.toLowerCase() === storedAccount.toLowerCase()) {
+            setCurrentAccount(accounts[0].address);
+            
+            // Check if user is authenticated on the server
+            fetchUserData(accounts[0].address);
+          } else {
+            // Clear stored account if it doesn't match
+            localStorage.removeItem('connectedWallet');
+            setIsLoading(false);
+          }
+        } else {
+          setIsLoading(false);
+        }
       } catch (error) {
-        console.error('Failed to load ethers library in context:', error);
-      }
-    }
-    
-    loadEthers();
-    
-    // Check wallet connection status on page load
-    checkWalletConnection();
-    
-    // Add wallet event listeners
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.on('chainChanged', () => window.location.reload());
-      window.ethereum.on('disconnect', handleDisconnect);
-    }
-    
-    return () => {
-      // Clean up listeners
-      if (window.ethereum) {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-        window.ethereum.removeListener('chainChanged', () => {});
-        window.ethereum.removeListener('disconnect', handleDisconnect);
+        console.error('Error checking wallet connection:', error);
+        setError('Failed to connect to wallet');
+        setIsLoading(false);
       }
     };
+
+    checkWalletConnection();
   }, []);
 
-  // Check if wallet is connected and get account
-  const checkWalletConnection = async () => {
-    setLoading(true);
-    
+  // Function to fetch user data from the server
+  const fetchUserData = async (address) => {
     try {
-      // If ethereum is not available or ethers is not loaded yet, skip
-      if (!window.ethereum || !ethers) {
-        setLoading(false);
-        return;
+      // First check if the user exists
+      const response = await fetch(`/api/users/wallet/${address}`);
+      
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
       }
       
-      // Check if we're already authorized to access the wallet
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const accounts = await provider.listAccounts();
-      
-      if (accounts.length > 0) {
-        const address = accounts[0].address;
-        setWalletAddress(address);
-        setIsWalletConnected(true);
-        
-        // Get authentication status from server
-        try {
-          const userResponse = await axios.get('/api/user');
-          
-          // If not authenticated with the server but wallet is connected, authenticate
-          if (userResponse.status !== 200 || !userResponse.data) {
-            await authenticateWithServer(address);
-          } else {
-            // User is already authenticated
-            dispatch({ 
-              type: 'auth/login/fulfilled', 
-              payload: userResponse.data 
-            });
-          }
-        } catch (error) {
-          // Not authenticated, try to authenticate
-          await authenticateWithServer(address);
-        }
-      }
+      setIsLoading(false);
     } catch (error) {
-      console.error('Error checking wallet connection:', error);
-      setWalletError('Error connecting to wallet');
-    } finally {
-      setLoading(false);
+      console.error('Error fetching user data:', error);
+      setError('Failed to authenticate user');
+      setIsLoading(false);
     }
   };
 
-  // Handle account changes
-  const handleAccountsChanged = async (accounts) => {
-    if (accounts.length === 0) {
-      // User disconnected their wallet
-      setIsWalletConnected(false);
-      setWalletAddress('');
-      // Logout user
-      dispatch({ type: 'auth/logout/fulfilled' });
-    } else {
-      // User switched accounts, update state
-      setWalletAddress(accounts[0]);
-      setIsWalletConnected(true);
-      // Re-authenticate with new account
-      await authenticateWithServer(accounts[0]);
-    }
-  };
-
-  // Handle disconnect
-  const handleDisconnect = () => {
-    setIsWalletConnected(false);
-    setWalletAddress('');
-    // Logout user
-    dispatch({ type: 'auth/logout/fulfilled' });
-  };
-
-  // Authenticate with server
-  const authenticateWithServer = async (address) => {
-    if (!ethers || !address) return false;
-    
+  // Connect wallet function
+  const connectWallet = useCallback(async () => {
     try {
-      // Get nonce to sign
-      const nonceResponse = await axios.get(`/api/wallet/nonce/${address}`);
-      const { nonce } = nonceResponse.data;
+      setIsLoading(true);
+      setError(null);
       
-      // Sign the nonce
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const signature = await signer.signMessage(nonce);
-      
-      // Authenticate with server
-      const authResponse = await axios.post('/api/wallet/auth', {
-        address,
-        signature
-      });
-      
-      if (authResponse.status === 200) {
-        dispatch({ 
-          type: 'auth/login/fulfilled', 
-          payload: authResponse.data 
-        });
-        return true;
+      if (!window.ethereum) {
+        throw new Error('Ethereum wallet not found. Please install MetaMask or a similar wallet');
       }
       
-      return false;
-    } catch (error) {
-      console.error('Authentication error:', error);
-      setWalletError('Authentication failed');
-      return false;
-    }
-  };
-
-  // Connect wallet
-  const connectWallet = async () => {
-    if (isWalletConnected) return true;
-    
-    if (!window.ethereum) {
-      setWalletError('No Ethereum wallet detected. Please install MetaMask, Trust Wallet or another compatible wallet.');
-      return false;
-    }
-    
-    if (!ethers) {
-      setWalletError('Web3 library not loaded. Please refresh the page and try again.');
-      return false;
-    }
-    
-    setWalletError(null);
-    setLoading(true);
-    
-    try {
-      // Request accounts
+      // Request account access
       const provider = new ethers.BrowserProvider(window.ethereum);
       const accounts = await provider.send('eth_requestAccounts', []);
+      
+      if (accounts.length === 0) {
+        throw new Error('No accounts found in your wallet');
+      }
+      
       const address = accounts[0];
+      setCurrentAccount(address);
       
-      if (!address) {
-        throw new Error('No account selected');
+      // Get nonce from the server
+      const nonceResponse = await fetch(`/api/wallet-auth/nonce?address=${address}`);
+      
+      if (!nonceResponse.ok) {
+        throw new Error('Failed to get authentication nonce');
       }
       
-      setWalletAddress(address);
-      setIsWalletConnected(true);
+      const { nonce } = await nonceResponse.json();
       
-      // Authenticate with server
-      const success = await authenticateWithServer(address);
+      // Have user sign the nonce
+      const message = `Sign this message to authenticate with P2P Trading Platform. Nonce: ${nonce}`;
+      const signer = await provider.getSigner();
+      const signature = await signer.signMessage(message);
       
-      if (!success) {
-        throw new Error('Server authentication failed');
+      // Verify the signature on the server
+      const verifyResponse = await fetch('/api/wallet-auth/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ address, signature }),
+      });
+      
+      if (!verifyResponse.ok) {
+        throw new Error('Failed to verify signature');
       }
       
-      return true;
+      const userData = await verifyResponse.json();
+      setUser(userData);
+      
+      // Store connected wallet in local storage
+      localStorage.setItem('connectedWallet', address);
+      
+      setIsLoading(false);
+      return userData;
     } catch (error) {
-      console.error('Wallet connection error:', error);
-      setWalletError(error.message || 'Failed to connect wallet');
-      setIsWalletConnected(false);
-      setWalletAddress('');
-      return false;
-    } finally {
-      setLoading(false);
+      console.error('Error connecting wallet:', error);
+      setError(error.message || 'Failed to connect wallet');
+      setIsLoading(false);
+      throw error;
     }
-  };
+  }, []);
 
-  // Disconnect wallet (for UI purposes, the actual connection remains in the browser)
-  const disconnectWallet = () => {
-    setIsWalletConnected(false);
-    setWalletAddress('');
-    // Logout from Redux store
-    dispatch({ type: 'auth/logout/fulfilled' });
-    return true;
-  };
+  // Disconnect wallet function
+  const disconnectWallet = useCallback(() => {
+    setCurrentAccount(null);
+    setUser(null);
+    localStorage.removeItem('connectedWallet');
+  }, []);
 
-  // Detect if on mobile device
-  const isMobile = () => {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  };
-
-  // Deep link to mobile wallet apps
-  const openMobileWallet = () => {
-    // This link format works with MetaMask, Trust Wallet, and many others
-    window.location.href = 'https://metamask.app.link/dapp/' + window.location.href.split('//')[1];
-  };
-
-  // Context value
+  // Provide the context value
   const value = {
-    loading,
+    currentAccount,
     user,
-    walletAddress,
-    isWalletConnected,
-    walletError,
+    isLoading,
+    error,
     connectWallet,
     disconnectWallet,
-    isMobile,
-    openMobileWallet
+    isAuthenticated: !!user,
+    isAdmin: user?.role === 'admin',
   };
 
   return (
@@ -246,11 +155,4 @@ export const WalletAuthProvider = ({ children }) => {
   );
 };
 
-// Custom hook to use the wallet auth context
-export const useWalletAuth = () => {
-  const context = useContext(WalletAuthContext);
-  if (!context) {
-    throw new Error('useWalletAuth must be used within a WalletAuthProvider');
-  }
-  return context;
-};
+export default WalletAuthContext;

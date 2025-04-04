@@ -8,6 +8,7 @@ const tradeRoutes = require('./routes/trades');
 const userRoutes = require('./routes/users');
 const walletRoutes = require('./routes/wallet');
 const adminRoutes = require('./routes/admin');
+const apiRoutes = require('./routes/api.fixed');
 const { exec } = require('child_process');
 
 // Import database connection
@@ -75,6 +76,9 @@ const { isAuthenticated, isAdmin } = setupAuth(app);
 
 // Define the registration, login and user routes directly
 // API Routes with mixed authentication requirements
+// Main API routes
+app.use('/api', apiRoutes); // New unified API routes
+
 // Trades routes - some endpoints need auth, others don't
 app.use('/api/trades', tradeRoutes); // Auth checked inside specific routes
 app.use('/api/users', userRoutes); // Some endpoints public, auth checked inside
@@ -110,13 +114,23 @@ app.get('/', (req, res) => {
 });
 
 // Handle client-side routing with React Router
-app.get('/dashboard', (req, res) => {
-  const indexPath = path.join(__dirname, '../client/dist/index.html');
-  if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    res.redirect('/');
-  }
+// Add all routes that should be handled by the client-side router
+[
+  '/dashboard',
+  '/trades',
+  '/trades/:id',
+  '/create-trade',
+  '/admin',
+  '/admin/:section'
+].forEach(route => {
+  app.get(route, (req, res) => {
+    const indexPath = path.join(__dirname, '../client/dist/index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.redirect('/');
+    }
+  });
 });
 
 // API documentation route

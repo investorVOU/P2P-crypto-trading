@@ -1,54 +1,67 @@
-import React from 'react';
-import { useWalletAuth } from '../contexts/WalletAuthContext';
+import React, { useContext } from 'react';
+import { Link } from 'react-router-dom';
 import WalletConnectButton from './WalletConnectButton';
+import WalletAuthContext from '../contexts/WalletAuthContext';
 
 const WalletStatusBar = () => {
-  const { isWalletConnected, walletAddress, loading, disconnectWallet } = useWalletAuth();
+  const { isAuthenticated, isAdmin, user, isLoading } = useContext(WalletAuthContext);
 
   return (
-    <div className="bg-gray-100 border-b border-gray-200 py-2">
-      <div className="container mx-auto flex justify-between items-center px-4">
-        <div className="text-sm text-gray-700">
-          {loading ? (
-            <span className="flex items-center">
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-700" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    <header className="bg-white shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16 items-center">
+          {/* Logo and site name */}
+          <div className="flex items-center">
+            <Link to="/" className="flex-shrink-0 flex items-center">
+              <svg className="h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
-              Checking wallet...
-            </span>
-          ) : isWalletConnected ? (
-            <span className="flex items-center">
-              <svg className="h-4 w-4 mr-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"></path>
-              </svg>
-              Connected: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-            </span>
-          ) : (
-            <span>Not connected to a wallet</span>
-          )}
-        </div>
-        
-        <div>
-          {isWalletConnected ? (
-            <button
-              onClick={disconnectWallet}
-              className="text-sm text-gray-600 hover:text-gray-900 flex items-center"
-            >
-              <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-              </svg>
-              Disconnect
-            </button>
-          ) : (
-            <WalletConnectButton 
-              buttonText="Connect Wallet" 
-              className="text-sm bg-blue-600 text-white hover:bg-blue-700 px-3 py-1 rounded"
-            />
-          )}
+              <span className="ml-2 text-xl font-bold text-gray-900">P2P Trading</span>
+            </Link>
+            
+            {/* Navigation links */}
+            <nav className="ml-8 flex space-x-4">
+              <Link to="/trades" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                Trades
+              </Link>
+              {isAuthenticated && (
+                <Link to="/create-trade" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                  Create Trade
+                </Link>
+              )}
+              {isAuthenticated && (
+                <Link to="/dashboard" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                  Dashboard
+                </Link>
+              )}
+              {isAdmin && (
+                <Link to="/admin" className="text-indigo-600 hover:text-indigo-900 px-3 py-2 rounded-md text-sm font-medium">
+                  Admin
+                </Link>
+              )}
+            </nav>
+          </div>
+          
+          {/* Right side - wallet connection or user info */}
+          <div className="flex items-center">
+            {isAuthenticated && user && (
+              <div className="mr-4 flex items-center">
+                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+                  {user.username ? user.username.charAt(0).toUpperCase() : '?'}
+                </div>
+                <span className="ml-2 text-sm font-medium text-gray-700">{user.username || 'User'}</span>
+              </div>
+            )}
+            <WalletConnectButton />
+          </div>
         </div>
       </div>
-    </div>
+    </header>
   );
 };
 

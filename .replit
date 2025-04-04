@@ -31,7 +31,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd server && npm install && node index.js"
+args = "cd server && node index.js"
 waitForPort = 8000
 
 [[workflows.workflow]]
@@ -50,7 +50,7 @@ args = "cd client && npx vite --port 5000 --host 0.0.0.0"
 waitForPort = 5000
 
 [deployment]
-run = ["sh", "-c", "cd server && npm install && node index.js"]
+run = ["sh", "-c", "cd server && node index.js"]
 
 [[ports]]
 localPort = 5000

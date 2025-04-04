@@ -8,24 +8,21 @@ export default defineConfig({
   server: {
     port: 5000,
     host: '0.0.0.0',
-    hmr: {
-      host: '0.0.0.0',
-    },
-    watch: {
-      usePolling: true,
-    },
-    allowedHosts: ['all', 'localhost', '.replit.dev', '.janeway.replit.dev'],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
-        secure: false,
+      },
+      '/ws': {
+        target: 'ws://localhost:8000',
+        ws: true,
       },
     },
   },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@shared': path.resolve(__dirname, '../shared'),
     },
   },
 });
