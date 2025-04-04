@@ -134,9 +134,39 @@ const WalletConnectButton = ({ className, buttonText = "Connect Wallet" }) => {
     // If already connected, don't do anything
     if (isConnected) return;
     
+    // Handle case where ethereum object isn't available yet on mobile browsers
     if (!window.ethereum) {
-      setError('No Ethereum wallet detected. Please install MetaMask, Trust Wallet or another Web3 wallet.');
-      return;
+      // If we're in MetaMask browser but ethereum object isn't injected yet, show a loading message
+      if (isMetaMaskBrowser()) {
+        setError('Waiting for MetaMask to connect...');
+        
+        // Check every second for the ethereum object to be injected
+        const checkInterval = setInterval(() => {
+          if (window.ethereum) {
+            clearInterval(checkInterval);
+            connectWallet(); // Retry connection once ethereum is available
+          }
+        }, 1000);
+        
+        // Stop checking after 10 seconds
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          if (!window.ethereum) {
+            setError('MetaMask not detected. Please make sure MetaMask mobile app is properly installed.');
+          }
+        }, 10000);
+        
+        return;
+      }
+      
+      // For non-MetaMask browsers without ethereum object
+      if (isMobile()) {
+        setError('No wallet detected. Open this page in the MetaMask mobile app browser.');
+        return;
+      } else {
+        setError('No Ethereum wallet detected. Please install MetaMask or another Web3 wallet.');
+        return;
+      }
     }
     
     if (!ethers) {
@@ -180,11 +210,24 @@ const WalletConnectButton = ({ className, buttonText = "Connect Wallet" }) => {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   };
   
+  // Check if already in MetaMask browser
+  const isMetaMaskBrowser = () => {
+    return navigator.userAgent.includes('MetaMask');
+  };
+  
   // Opens wallet app if on mobile
   const openMobileWallet = () => {
-    // This will work with various wallet apps that support deep linking
-    // Example for MetaMask
-    window.location.href = 'https://metamask.app.link/dapp/' + window.location.href.split('//')[1];
+    // If we're already in the MetaMask browser, try to connect directly
+    if (isMetaMaskBrowser()) {
+      connectWallet();
+      return;
+    }
+    
+    // Get current URL without protocol
+    const currentUrl = window.location.href.split('//')[1];
+    
+    // This uses the universal linking format that MetaMask mobile supports
+    window.location.href = `https://metamask.app.link/dapp/${currentUrl}`;
   };
 
   // Render button based on connection state
