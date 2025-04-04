@@ -87,12 +87,12 @@ export type InsertAdminNote = typeof adminNotes.$inferInsert;
 // Ratings table
 export const ratings = pgTable("ratings", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
   tradeId: integer("trade_id").notNull().references(() => trades.id),
-  rating: integer("rating").notNull(),
-  comment: text("comment"),
-  createdAt: timestamp("created_at").defaultNow(),
-  ratedBy: integer("rated_by").notNull().references(() => users.id)
+  raterId: integer("rater_id").notNull().references(() => users.id),
+  ratedId: integer("rated_id").notNull().references(() => users.id),
+  stars: integer("stars").notNull(),
+  text: text("text"),
+  createdAt: timestamp("created_at").defaultNow()
 });
 
 export type Rating = typeof ratings.$inferSelect;
@@ -131,8 +131,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   sentMessages: many(messages, { relationName: "sent_messages" }),
   receivedMessages: many(messages, { relationName: "received_messages" }),
   disputes: many(disputes),
-  ratings: many(ratings, { relationName: "user_ratings" }),
-  givenRatings: many(ratings, { relationName: "given_ratings" }),
+  receivedRatings: many(ratings, { relationName: "rated" }),
+  givenRatings: many(ratings, { relationName: "rater" }),
   walletBalances: many(walletBalances),
   transactions: many(transactions),
   adminNotes: many(adminNotes)
@@ -195,15 +195,13 @@ export const adminNotesRelations = relations(adminNotes, ({ one }) => ({
 }));
 
 export const ratingsRelations = relations(ratings, ({ one }) => ({
-  user: one(users, {
-    fields: [ratings.userId],
-    references: [users.id],
-    relationName: "user_ratings"
+  rater: one(users, {
+    fields: [ratings.raterId],
+    references: [users.id]
   }),
-  ratedBy: one(users, {
-    fields: [ratings.ratedBy],
-    references: [users.id],
-    relationName: "given_ratings"
+  rated: one(users, {
+    fields: [ratings.ratedId],
+    references: [users.id]
   }),
   trade: one(trades, {
     fields: [ratings.tradeId],

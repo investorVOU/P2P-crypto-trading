@@ -1,7 +1,8 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api';
+// Update API URL to use relative path that works in Replit environment
+const API_URL = '/api';
 
 // Async thunks
 export const login = createAsyncThunk(

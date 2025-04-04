@@ -67,7 +67,7 @@ async function seedData() {
 
     // Seed Messages
     const messagesQuery = `
-      INSERT INTO messages (trade_id, sender_id, recipient_id, content)
+      INSERT INTO messages (trade_id, sender_id, receiver_id, text)
       VALUES 
       ($1, $2, $3, 'Hey, I''m interested in this trade.'),
       ($1, $3, $2, 'Great! I can proceed with it.'),
@@ -89,7 +89,7 @@ async function seedData() {
 
     // Seed admin note for the dispute
     const adminNoteQuery = `
-      INSERT INTO admin_notes (dispute_id, admin_id, content)
+      INSERT INTO admin_notes (dispute_id, admin_id, text)
       VALUES ($1, $2, 'Checking the payment confirmation with the payment provider.')
     `;
     await query(adminNoteQuery, [disputeId, adminId]);
@@ -97,7 +97,7 @@ async function seedData() {
 
     // Seed ratings
     const ratingsQuery = `
-      INSERT INTO ratings (trade_id, rater_id, rated_id, rating, comment)
+      INSERT INTO ratings (trade_id, rater_id, rated_id, stars, text)
       VALUES 
       ($1, $2, $3, 5, 'Great trader, smooth transaction!'),
       ($1, $3, $2, 4, 'Good experience overall.')

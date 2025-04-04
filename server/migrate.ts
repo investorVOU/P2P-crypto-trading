@@ -1,5 +1,4 @@
-const { Pool } = require("@neondatabase/serverless");
-const { drizzle } = require("drizzle-orm/neon-serverless");
+const { Pool } = require("pg");
 
 // This script pushes the schema directly to the database
 async function main() {
@@ -9,7 +8,12 @@ async function main() {
     throw new Error("DATABASE_URL environment variable is required");
   }
 
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = new Pool({ 
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false // Needed for Replit environment
+    }
+  });
   
   // Create the tables based on the schema
   console.log("Creating database tables if they don't exist...");
@@ -102,12 +106,12 @@ async function main() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS ratings (
         id SERIAL PRIMARY KEY,
-        user_id INTEGER NOT NULL REFERENCES users(id),
         trade_id INTEGER NOT NULL REFERENCES trades(id),
-        rating INTEGER NOT NULL,
-        comment TEXT,
-        created_at TIMESTAMP DEFAULT NOW(),
-        rated_by INTEGER NOT NULL REFERENCES users(id)
+        rater_id INTEGER NOT NULL REFERENCES users(id),
+        rated_id INTEGER NOT NULL REFERENCES users(id),
+        stars INTEGER NOT NULL,
+        text TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
       );
     `);
     console.log("Created ratings table (if not exists)");

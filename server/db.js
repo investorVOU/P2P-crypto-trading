@@ -1,8 +1,11 @@
 const { Pool } = require('pg');
 
-// Create a connection pool
+// Create a connection pool with SSL options for Replit
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false // Needed for Replit's PostgreSQL connection
+  }
 });
 
 // Simple function to query the database
