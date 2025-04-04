@@ -26,7 +26,7 @@ async function verifyWalletSignature(address, signature) {
     }
     
     // Check if nonce is expired (10 minutes)
-    const expirationTime = new Date(nonceData.createdAt);
+    const expirationTime = new Date(nonceData.created_at);
     expirationTime.setMinutes(expirationTime.getMinutes() + 10);
     
     if (new Date() > expirationTime) {
