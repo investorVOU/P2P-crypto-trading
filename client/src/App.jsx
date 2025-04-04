@@ -7,9 +7,9 @@ import HomePage from './pages/HomePage';
 import TradesPage from './pages/TradesPage';
 import TradeDetailPage from './pages/TradeDetailPage';
 import CreateTradePage from './pages/CreateTradePage';
-import AdminLoginPage from './pages/AdminLoginPage'; // Import AdminLoginPage
-import AdminDashboard from './pages/AdminDashboard'; // Import AdminDashboard
-import NotFoundPage from './pages/NotFoundPage';     //Import NotFoundPage
+import AdminLoginPage from './pages/admin/AdminLoginPage';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import NotFoundPage from './pages/NotFoundPage';
 
 
 const App = () => {
