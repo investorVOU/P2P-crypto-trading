@@ -15,6 +15,8 @@
     "@react-navigation/native": "^7.1.4",
     "@react-navigation/stack": "^7.2.8",
     "@reduxjs/toolkit": "^2.6.1",
+    "@types/connect-pg-simple": "^7.0.3",
+    "@types/express-session": "^1.18.1",
     "@types/pg": "^8.11.11",
     "axios": "^1.8.4",
     "body-parser": "^2.2.0",

@@ -28,6 +28,7 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd server && npm install && node index.js"
+waitForPort = 8000
 
 [deployment]
 run = ["sh", "-c", "cd server && npm install && node index.js"]
