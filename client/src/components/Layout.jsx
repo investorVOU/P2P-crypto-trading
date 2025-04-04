@@ -14,13 +14,7 @@ const Layout = ({ children }) => {
     dispatch(logout());
   };
   
-  // Check if we're on an auth page
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
-  
-  // If we're on an auth page, just render children with no navbar/footer
-  if (isAuthPage) {
-    return <>{children}</>;
-  }
+  // No longer checking for auth pages since we only use wallet connection
   
   return (
     <div className="min-h-screen flex flex-col">
@@ -110,23 +104,11 @@ const Layout = ({ children }) => {
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center">
                   <WalletConnectButton 
                     buttonText="Connect Wallet"
-                    className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
                   />
-                  <Link
-                    to="/login"
-                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-orange-700 bg-orange-100 hover:bg-orange-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-                  >
-                    Sign in
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-                  >
-                    Sign up
-                  </Link>
                 </div>
               )}
             </div>
@@ -257,25 +239,11 @@ const Layout = ({ children }) => {
                 </button>
               </div>
             ) : (
-              <div className="mt-3 space-y-1 px-2">
-                <div className="block px-3 py-2 rounded-md text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100">
-                  <WalletConnectButton 
-                    buttonText="Connect Wallet"
-                    className="text-gray-500 hover:text-gray-800 w-full text-left"
-                  />
-                </div>
-                <Link
-                  to="/login"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                >
-                  Sign in
-                </Link>
-                <Link
-                  to="/register"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
-                >
-                  Sign up
-                </Link>
+              <div className="mt-3 px-2 flex justify-center">
+                <WalletConnectButton 
+                  buttonText="Connect Wallet"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                />
               </div>
             )}
           </div>

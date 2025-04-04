@@ -96,23 +96,11 @@ function HomePage() {
               <p className="mt-6 text-xl max-w-3xl">
                 Buy and sell cryptocurrencies directly with other users. Fast, secure, and commission-free trading with our escrow service.
               </p>
-              <div className="mt-10 flex flex-wrap gap-4">
+              <div className="mt-10 flex justify-center">
                 <WalletConnectButton 
                   buttonText="Connect Wallet"
-                  className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-orange-700 bg-white hover:bg-gray-50"
+                  className="inline-flex items-center justify-center px-8 py-4 border border-transparent text-lg font-medium rounded-md text-orange-700 bg-white hover:bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200"
                 />
-                <Link
-                  to="/register"
-                  className="inline-flex items-center justify-center px-5 py-3 border border-white text-base font-medium rounded-md text-white hover:bg-orange-800"
-                >
-                  Get Started
-                </Link>
-                <Link
-                  to="/trades"
-                  className="inline-flex items-center justify-center px-5 py-3 border border-white text-base font-medium rounded-md text-white hover:bg-orange-800"
-                >
-                  Browse Trades
-                </Link>
               </div>
             </div>
             <div className="mt-12 lg:mt-0">
@@ -377,24 +365,14 @@ function HomePage() {
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8 lg:flex lg:items-center lg:justify-between">
           <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
             <span className="block">Ready to start trading?</span>
-            <span className="block text-orange-300">Create an account and get started today.</span>
+            <span className="block text-orange-300">Connect your wallet to access the platform.</span>
           </h2>
           <div className="mt-8 flex lg:mt-0 lg:flex-shrink-0">
             <div className="inline-flex rounded-md shadow">
-              <Link
-                to="/register"
+              <WalletConnectButton 
+                buttonText="Connect Wallet"
                 className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-orange-600 bg-white hover:bg-gray-50"
-              >
-                Sign up
-              </Link>
-            </div>
-            <div className="ml-3 inline-flex rounded-md shadow">
-              <Link
-                to="/trades"
-                className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-orange-600 hover:bg-orange-500"
-              >
-                Browse Trades
-              </Link>
+              />
             </div>
           </div>
         </div>

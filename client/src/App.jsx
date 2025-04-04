@@ -7,10 +7,6 @@ import MainLayout from './components/layouts/MainLayout';
 
 // Pages
 import HomePage from './pages/HomePage';
-import LoginPage from './pages/auth/LoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
-import NewLoginPage from './pages/auth/NewLoginPage';
-import NewRegisterPage from './pages/auth/NewRegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -18,12 +14,12 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 function App() {
   // Define ProtectedRoute inside App function so it can use the context provided by WalletAuthProvider
   const ProtectedRoute = ({ children, requireAdmin = false }) => {
-    // Check Redux auth state
-    const { isAuthenticated, loading, user } = useSelector((state) => state.auth) || {};
+    // Check Redux auth state for admin access
+    const { user } = useSelector((state) => state.auth) || {};
     const { isWalletConnected, loading: walletLoading } = useWalletAuth();
     
-    // Check if any auth method is loading
-    if (loading || walletLoading) {
+    // Check if wallet auth is loading
+    if (walletLoading) {
       return (
         <div className="min-h-screen flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
@@ -31,12 +27,12 @@ function App() {
       );
     }
     
-    // Allow access if authenticated with standard login OR wallet connected
-    if (!isAuthenticated && !isWalletConnected) {
-      return <Navigate to="/login" />;
+    // Only allow access if wallet is connected
+    if (!isWalletConnected) {
+      return <Navigate to="/" />;
     }
     
-    // For admin routes, still require standard authentication with admin role
+    // For admin routes, still require admin role
     if (requireAdmin && !user?.is_admin) {
       return <Navigate to="/dashboard" />;
     }
@@ -55,10 +51,6 @@ function App() {
       <MainLayout>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<NewLoginPage />} />
-          <Route path="/register" element={<NewRegisterPage />} />
-          <Route path="/old-login" element={<LoginPage />} />
-          <Route path="/old-register" element={<RegisterPage />} />
           
           <Route 
             path="/dashboard" 
