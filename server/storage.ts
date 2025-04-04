@@ -90,10 +90,8 @@ export class DatabaseStorage implements IStorage {
       return await db
         .select()
         .from(trades)
-        .where(
-          eq(trades.userId, userId),
-          eq(trades.status, status)
-        );
+        .where(eq(trades.userId, userId))
+        .where(eq(trades.status, status));
     } else if (userId) {
       return await db
         .select()

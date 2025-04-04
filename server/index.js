@@ -17,7 +17,7 @@ require('./db');
 const initializeDatabase = async () => {
   return new Promise((resolve, reject) => {
     console.log('Checking if database needs to be initialized...');
-    exec('node server/migrate-tables.js', (error, stdout, stderr) => {
+    exec('node migrate-tables.js', (error, stdout, stderr) => {
       if (error) {
         console.error('Error initializing database:', error);
         console.error(stderr);
@@ -29,7 +29,7 @@ const initializeDatabase = async () => {
       // Seed database with sample data if in development mode
       if (process.env.NODE_ENV !== 'production') {
         console.log('Development mode detected, seeding database with sample data...');
-        exec('node server/seed-data.js', (seedError, seedStdout, seedStderr) => {
+        exec('node seed-data.js', (seedError, seedStdout, seedStderr) => {
           if (seedError) {
             console.error('Error seeding database:', seedError);
             console.error(seedStderr);
