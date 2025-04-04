@@ -8,21 +8,20 @@ export default defineConfig({
   server: {
     port: 5000,
     host: '0.0.0.0',
+    allowedHosts: [
+      'bce68a23-beb3-4a1f-91d2-1067138ad180-00-m9gvuhgcop0r.janeway.replit.dev'
+    ],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
-      },
-      '/ws': {
-        target: 'ws://localhost:8000',
-        ws: true,
+        secure: false,
       },
     },
   },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@shared': path.resolve(__dirname, '../shared'),
     },
   },
 });
