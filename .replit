@@ -3,6 +3,9 @@ modules = ["nodejs-20", "postgresql-16"]
 [nix]
 channel = "stable-24_05"
 
+[env]
+REPLIT_DISABLE_PACKAGE_LAYER = "1"
+
 [workflows]
 runButton = "Project"
 
