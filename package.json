@@ -1,0 +1,34 @@
+{
+  "name": "workspace",
+  "version": "1.0.0",
+  "main": "babel.config.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@react-navigation/bottom-tabs": "^7.3.8",
+    "@react-navigation/native": "^7.1.4",
+    "@react-navigation/stack": "^7.2.8",
+    "@reduxjs/toolkit": "^2.6.1",
+    "axios": "^1.8.4",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "expo": "^52.0.44",
+    "expo-status-bar": "^2.0.1",
+    "express": "^5.1.0",
+    "react": "^19.1.0",
+    "react-native": "^0.78.2",
+    "react-native-gesture-handler": "^2.25.0",
+    "react-native-reanimated": "^3.17.2",
+    "react-native-safe-area-context": "^5.3.0",
+    "react-native-screens": "^4.10.0",
+    "react-native-vector-icons": "^10.2.0",
+    "react-native-web": "^0.20.0",
+    "react-redux": "^9.2.0",
+    "tailwind-rn": "^4.2.0"
+  }
+}
