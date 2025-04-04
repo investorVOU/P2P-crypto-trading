@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import { ethers } from 'ethers';
 import axios from 'axios';
+
+// Declare ethers variable outside component to be used later
+let ethers = null;
 
 const WalletConnectButton = ({ className, buttonText = "Connect Wallet" }) => {
   const dispatch = useDispatch();
@@ -14,41 +16,53 @@ const WalletConnectButton = ({ className, buttonText = "Connect Wallet" }) => {
       return;
     }
     
+    if (!ethers) {
+      setError('Web3 library not loaded. Please refresh the page and try again.');
+      return;
+    }
+    
     setLoading(true);
     setError(null);
     
     try {
-      // Request account access
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const accounts = await provider.send('eth_requestAccounts', []);
-      const address = accounts[0];
-      
-      if (!address) {
-        throw new Error('No account selected');
-      }
-      
-      // Get nonce from server
-      const nonceResponse = await axios.get(`/api/wallet/nonce/${address}`);
-      const { nonce } = nonceResponse.data;
-      
-      // Sign the nonce with the wallet
-      const signer = await provider.getSigner();
-      const signature = await signer.signMessage(nonce);
-      
-      // Authenticate with the server
-      const authResponse = await axios.post('/api/wallet/auth', {
-        address,
-        signature
-      });
-      
-      // Handle successful authentication
-      if (authResponse.status === 200) {
-        dispatch({ 
-          type: 'auth/login/fulfilled', 
-          payload: authResponse.data 
+      // Request account access using window.ethereum directly if ethers isn't available
+      let address;
+      try {
+        // First try with ethers if available
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.send('eth_requestAccounts', []);
+        address = accounts[0];
+        
+        if (!address) {
+          throw new Error('No account selected');
+        }
+        
+        // Get nonce from server
+        const nonceResponse = await axios.get(`/api/wallet/nonce/${address}`);
+        const { nonce } = nonceResponse.data;
+        
+        // Sign the nonce with the wallet
+        const signer = await provider.getSigner();
+        const signature = await signer.signMessage(nonce);
+        
+        // Authenticate with the server
+        const authResponse = await axios.post('/api/wallet/auth', {
+          address,
+          signature
         });
         
-        // Redirect based on user role is handled in the parent component
+        // Handle successful authentication
+        if (authResponse.status === 200) {
+          dispatch({ 
+            type: 'auth/login/fulfilled', 
+            payload: authResponse.data 
+          });
+          
+          // Redirect based on user role is handled in the parent component
+        }
+      } catch (err) {
+        console.error('Error with wallet authentication:', err);
+        setError('Could not authenticate with wallet. Please try again.');
       }
     } catch (err) {
       console.error('Wallet connection error:', err);
@@ -58,6 +72,8 @@ const WalletConnectButton = ({ className, buttonText = "Connect Wallet" }) => {
     }
   };
 
+  // Always render the button even if ethers isn't available
+  // We'll handle the error condition when the user clicks the button
   return (
     <div>
       {error && (
