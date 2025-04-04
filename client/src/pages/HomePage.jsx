@@ -9,7 +9,7 @@ const HomePage = () => {
   return (
     <div className="bg-white">
       {/* Hero section */}
-      <div className="relative bg-gradient-to-r from-blue-600 to-indigo-700">
+      <div className="relative bg-blue-600">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
           <div className="lg:grid lg:grid-cols-2 lg:gap-8 items-center">
             <div>
@@ -24,7 +24,7 @@ const HomePage = () => {
               <div className="mt-10 flex space-x-4">
                 <Link 
                   to="/trades" 
-                  className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50"
+                  className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50"
                 >
                   Browse Trades
                 </Link>
