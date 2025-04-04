@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import WalletConnectButton from '../components/WalletConnectButton';
 import axios from 'axios';
 
 const API_URL = 'http://localhost:8000/api';
@@ -96,9 +97,13 @@ function HomePage() {
                 Buy and sell cryptocurrencies directly with other users. Fast, secure, and commission-free trading with our escrow service.
               </p>
               <div className="mt-10 flex flex-wrap gap-4">
+                <WalletConnectButton 
+                  buttonText="Connect Wallet"
+                  className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-orange-700 bg-white hover:bg-gray-50"
+                />
                 <Link
                   to="/register"
-                  className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-orange-700 bg-white hover:bg-gray-50"
+                  className="inline-flex items-center justify-center px-5 py-3 border border-white text-base font-medium rounded-md text-white hover:bg-orange-800"
                 >
                   Get Started
                 </Link>

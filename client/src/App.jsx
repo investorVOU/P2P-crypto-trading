@@ -7,6 +7,8 @@ import { checkAuth } from './features/auth/authSlice';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import NewLoginPage from './pages/auth/NewLoginPage';
+import NewRegisterPage from './pages/auth/NewRegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -45,8 +47,10 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/login" element={<NewLoginPage />} />
+      <Route path="/register" element={<NewRegisterPage />} />
+      <Route path="/old-login" element={<LoginPage />} />
+      <Route path="/old-register" element={<RegisterPage />} />
       
       <Route 
         path="/dashboard" 
