@@ -8,33 +8,50 @@ const WalletConnectButton = () => {
   const handleConnectWallet = async () => {
     try {
       if (typeof window.ethereum === 'undefined') {
-        alert('Please install MetaMask to use this feature');
-        return;
+        throw new Error('Please install MetaMask to use this feature');
       }
 
       setIsLoading(true);
+      setIsConnecting(true);
+
+      // Check if already connected
       const accounts = await window.ethereum.request({ 
         method: 'eth_requestAccounts' 
       });
 
-      if (accounts.length > 0) {
-        const address = accounts[0];
-        setCurrentAccount(address);
-        // Get the balance
-        const balance = await window.ethereum.request({
-          method: 'eth_getBalance',
-          params: [address, 'latest']
-        });
-
-        // Convert balance from wei to ether
-        const etherBalance = parseInt(balance, 16) / Math.pow(10, 18);
-        setBalance(etherBalance.toFixed(4));
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts found. Please unlock your MetaMask wallet.');
       }
+
+      const address = accounts[0];
+      setCurrentAccount(address);
+
+      // Get the balance
+      const balance = await window.ethereum.request({
+        method: 'eth_getBalance',
+        params: [address, 'latest']
+      });
+
+      // Convert balance from wei to ether
+      const etherBalance = parseInt(balance, 16) / Math.pow(10, 18);
+      setBalance(etherBalance.toFixed(4));
+
     } catch (error) {
       console.error('Error in connect button handler:', error);
-      alert('Failed to connect wallet. Please try again.');
+      let errorMessage = 'Failed to connect wallet. ';
+
+      if (error.code === 4001) {
+        errorMessage = 'You rejected the connection request. Please try again.';
+      } else if (error.code === -32002) {
+        errorMessage = 'Please check MetaMask. Connection request pending.';
+      } else {
+        errorMessage += error.message || 'Please try again.';
+      }
+
+      alert(errorMessage);
     } finally {
       setIsLoading(false);
+      setIsConnecting(false);
     }
   };
 
