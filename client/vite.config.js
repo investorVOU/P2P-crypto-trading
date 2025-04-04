@@ -8,7 +8,13 @@ export default defineConfig({
   server: {
     port: 5000,
     host: '0.0.0.0',
-    allowedHosts: 'all',
+    hmr: {
+      host: '0.0.0.0',
+    },
+    watch: {
+      usePolling: true,
+    },
+    allowedHosts: ['all', 'localhost', '.replit.dev', '.janeway.replit.dev'],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
