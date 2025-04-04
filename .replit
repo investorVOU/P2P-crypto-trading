@@ -7,7 +7,7 @@ channel = "stable-24_05"
 REPLIT_DISABLE_PACKAGE_LAYER = "1"
 
 [workflows]
-runButton = "Project"
+runButton = "Dev"
 
 [[workflows.workflow]]
 name = "Project"
@@ -51,6 +51,19 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "cd client && npx vite --port 5000 --host 0.0.0.0"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Dev"
+author = 41139441
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd server && node index.js"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run dev"
 
 [deployment]
 run = ["sh", "-c", "cd server && node index.js"]

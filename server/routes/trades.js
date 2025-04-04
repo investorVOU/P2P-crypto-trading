@@ -1,5 +1,17 @@
 const express = require('express');
 const router = express.Router();
+
+// Public endpoint for fetching trades
+router.get('/public/trades', async (req, res) => {
+  try {
+    const { type, currency, status } = req.query;
+    const trades = await storage.getTrades(null, status);
+    res.json(trades);
+  } catch (error) {
+    console.error('Error fetching trades:', error);
+    res.status(500).json({ error: 'Failed to fetch trades' });
+  }
+});
 const { query } = require('../db');
 
 // Get all trades (with various filter options)
