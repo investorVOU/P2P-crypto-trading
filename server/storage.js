@@ -83,4 +83,24 @@ class DatabaseStorage {
 // Create and export an instance of the storage
 const storage = new DatabaseStorage();
 
-module.exports = { storage };
+async function getTrades(status = null) {
+  try {
+    let query = 'SELECT * FROM trades';
+    const params = [];
+    
+    if (status) {
+      query += ' WHERE status = $1';
+      params.push(status);
+    }
+    
+    query += ' ORDER BY created_at DESC';
+    const result = await db.query(query, params);
+    return result.rows;
+  } catch (error) {
+    console.error('Error getting trades:', error);
+    throw error;
+  }
+}
+
+module.exports = {
+  getTrades, storage };

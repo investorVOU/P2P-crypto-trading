@@ -76,8 +76,20 @@ export const WalletAuthProvider = ({ children }) => {
       }
       
       // Request account access
+      if (typeof window.ethereum === 'undefined') {
+        throw new Error('Please install MetaMask or another Web3 wallet');
+      }
+      
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const accounts = await provider.send('eth_requestAccounts', []);
+      let accounts;
+      try {
+        accounts = await provider.send('eth_requestAccounts', []);
+      } catch (err) {
+        if (err.code === 4001) {
+          throw new Error('Please connect your wallet to continue');
+        }
+        throw new Error('Failed to connect wallet: ' + err.message);
+      }
       
       if (accounts.length === 0) {
         throw new Error('No accounts found in your wallet');
