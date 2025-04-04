@@ -3,20 +3,64 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
+const { setupAuth } = require('./auth');
 const tradeRoutes = require('./routes/trades');
 const userRoutes = require('./routes/users');
 const walletRoutes = require('./routes/wallet');
 const adminRoutes = require('./routes/admin');
-const { initializeDatabase } = require('./data/inMemoryDb');
+const { exec } = require('child_process');
+
+// Import database connection
+require('./db');
+
+// Initialize database if needed
+const initializeDatabase = async () => {
+  return new Promise((resolve, reject) => {
+    console.log('Checking if database needs to be initialized...');
+    exec('node server/migrate-tables.js', (error, stdout, stderr) => {
+      if (error) {
+        console.error('Error initializing database:', error);
+        console.error(stderr);
+        reject(error);
+        return;
+      }
+      console.log(stdout);
+      
+      // Seed database with sample data if in development mode
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('Development mode detected, seeding database with sample data...');
+        exec('node server/seed-data.js', (seedError, seedStdout, seedStderr) => {
+          if (seedError) {
+            console.error('Error seeding database:', seedError);
+            console.error(seedStderr);
+            // Don't reject here, as the tables were created successfully
+            console.log('Continuing without sample data...');
+          } else {
+            console.log(seedStdout);
+          }
+          resolve();
+        });
+      } else {
+        resolve();
+      }
+    });
+  });
+};
 
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// Initialize in-memory database with sample data
-initializeDatabase();
+// Generate a session secret if not provided
+if (!process.env.SESSION_SECRET) {
+  process.env.SESSION_SECRET = 'p2p-trading-platform-dev-secret';
+  console.warn('Warning: Using default session secret. Set SESSION_SECRET environment variable for production.');
+}
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' ? 'https://yourapp.replit.app' : true,
+  credentials: true
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -26,11 +70,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// API Routes
-app.use('/api/trades', tradeRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/wallet', walletRoutes);
-app.use('/api/admin', adminRoutes);
+// Setup authentication
+const { isAuthenticated, isAdmin } = setupAuth(app);
+
+// Define the registration, login and user routes directly
+// API Routes with authentication middleware
+app.use('/api/trades', isAuthenticated, tradeRoutes);
+app.use('/api/users', userRoutes); // Some endpoints public, auth checked inside
+app.use('/api/wallet', isAuthenticated, walletRoutes);
+app.use('/api/admin', isAuthenticated, isAdmin, adminRoutes);
 
 // Serve static assets
 app.use(express.static(path.join(__dirname, '..')));
@@ -69,21 +117,43 @@ app.get('/api', (req, res) => {
       message: 'P2P Trading Platform API Documentation',
       version: '1.0.0',
       endpoints: [
-        { method: 'GET', path: '/api/trades', description: 'Get all trades' },
-        { method: 'GET', path: '/api/trades/:id', description: 'Get a specific trade' },
-        { method: 'POST', path: '/api/trades', description: 'Create a new trade' },
-        { method: 'PUT', path: '/api/trades/:id/status', description: 'Update trade status' },
-        { method: 'GET', path: '/api/wallet/balances', description: 'Get wallet balances' },
-        { method: 'GET', path: '/api/wallet/transactions', description: 'Get wallet transactions' }
+        // Authentication endpoints
+        { method: 'POST', path: '/api/register', description: 'Register a new user account' },
+        { method: 'POST', path: '/api/login', description: 'Log in to an existing account' },
+        { method: 'POST', path: '/api/logout', description: 'Log out the current user' },
+        { method: 'GET', path: '/api/user', description: 'Get the current logged-in user data' },
+        
+        // Trade endpoints (require authentication)
+        { method: 'GET', path: '/api/trades', description: 'Get all trades (authenticated)' },
+        { method: 'GET', path: '/api/trades/:id', description: 'Get a specific trade (authenticated)' },
+        { method: 'POST', path: '/api/trades', description: 'Create a new trade (authenticated)' },
+        { method: 'PUT', path: '/api/trades/:id/status', description: 'Update trade status (authenticated)' },
+        
+        // Wallet endpoints (require authentication)
+        { method: 'GET', path: '/api/wallet/balances', description: 'Get wallet balances (authenticated)' },
+        { method: 'GET', path: '/api/wallet/transactions', description: 'Get wallet transactions (authenticated)' },
+        
+        // Admin endpoints (require admin authentication)
+        { method: 'GET', path: '/api/admin/users', description: 'Get all users (admin only)' },
+        { method: 'GET', path: '/api/admin/disputes', description: 'Get all disputes (admin only)' },
+        { method: 'PUT', path: '/api/admin/disputes/:id/resolve', description: 'Resolve a dispute (admin only)' }
       ]
     });
   }
 });
 
-// Start the server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://0.0.0.0:${PORT}`);
-});
+// Initialize database and start server
+(async () => {
+  try {
+    await initializeDatabase();
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running on http://0.0.0.0:${PORT}`);
+    });
+  } catch (err) {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  }
+})();
 
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
