@@ -4,7 +4,7 @@ import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
 import {
-  users, trades, messages, disputes, adminNotes, ratings, walletBalances, transactions,
+  users, trades, messages, disputes, adminNotes, ratings, walletBalances, transactions, walletNonces,
   type User, type InsertUser, 
   type Trade, type InsertTrade,
   type Message, type InsertMessage,
@@ -12,7 +12,8 @@ import {
   type AdminNote, type InsertAdminNote,
   type Rating, type InsertRating,
   type WalletBalance, type InsertWalletBalance,
-  type Transaction, type InsertTransaction
+  type Transaction, type InsertTransaction,
+  type WalletNonce, type InsertWalletNonce
 } from "../shared/schema";
 
 // Create PostgreSQL session store
@@ -63,6 +64,11 @@ export interface IStorage {
   // Transaction methods
   getTransactions(userId: number): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
+  
+  // Wallet authentication methods
+  getUserByWalletAddress(address: string): Promise<User | undefined>;
+  getWalletNonce(address: string): Promise<WalletNonce | undefined>;
+  createOrUpdateWalletNonce(address: string, nonce: string): Promise<WalletNonce>;
 }
 
 // Database storage implementation
@@ -291,6 +297,45 @@ export class DatabaseStorage implements IStorage {
   async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
     const [newTransaction] = await db.insert(transactions).values(transaction).returning();
     return newTransaction;
+  }
+  
+  // Wallet authentication methods
+  async getUserByWalletAddress(address: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.walletAddress, address));
+    return user;
+  }
+  
+  async getWalletNonce(address: string): Promise<WalletNonce | undefined> {
+    const [nonce] = await db.select().from(walletNonces).where(eq(walletNonces.address, address));
+    return nonce;
+  }
+  
+  async createOrUpdateWalletNonce(address: string, nonce: string): Promise<WalletNonce> {
+    // Check if nonce exists for this address
+    const existingNonce = await this.getWalletNonce(address);
+    
+    if (existingNonce) {
+      // Update existing nonce
+      const [updatedNonce] = await db
+        .update(walletNonces)
+        .set({ 
+          nonce,
+          createdAt: new Date()
+        })
+        .where(eq(walletNonces.address, address))
+        .returning();
+      return updatedNonce;
+    } else {
+      // Create new nonce
+      const [newNonce] = await db
+        .insert(walletNonces)
+        .values({
+          address,
+          nonce
+        })
+        .returning();
+      return newNonce;
+    }
   }
 }
 

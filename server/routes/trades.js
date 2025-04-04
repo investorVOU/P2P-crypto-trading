@@ -2,45 +2,113 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
 
-// Get all trades (filtered by user if provided)
+// Get all trades (with various filter options)
 router.get('/', async (req, res) => {
   try {
-    let sql;
-    let params = [];
+    const { userId, status, type, currency, limit, browse } = req.query;
     
-    if (req.query.userId) {
-      // Trades where the user is either the creator or counterparty
-      sql = `
-        SELECT * FROM trades 
-        WHERE user_id = $1 OR counterparty_id = $1
-        ORDER BY created_at DESC
-      `;
-      params = [req.query.userId];
-    } else {
-      // All trades for the authenticated user
-      sql = `
-        SELECT * FROM trades 
-        WHERE user_id = $1 OR counterparty_id = $1
-        ORDER BY created_at DESC
-      `;
-      params = [req.user.id];
+    // Build the SQL query based on parameters
+    let conditions = [];
+    let params = [];
+    let paramIndex = 1;
+    
+    // If browse=true is specified, get all 'active' trades available for joining
+    if (browse === 'true') {
+      conditions.push(`status = 'active'`);
+      // Only get trades where the counterparty is not set
+      conditions.push(`counterparty_id IS NULL`);
+    } 
+    // Otherwise, get user-specific trades or filter by user ID
+    else if (userId) {
+      conditions.push(`(user_id = $${paramIndex} OR counterparty_id = $${paramIndex})`);
+      params.push(userId);
+      paramIndex++;
+    } else if (req.user) {
+      // If user is authenticated and no userId specified, show their trades
+      conditions.push(`(user_id = $${paramIndex} OR counterparty_id = $${paramIndex})`);
+      params.push(req.user.id);
+      paramIndex++;
     }
     
     // Add status filter if provided
-    if (req.query.status) {
-      sql = sql.replace('ORDER BY', 'AND status = $' + (params.length + 1) + ' ORDER BY');
-      params.push(req.query.status);
+    if (status) {
+      conditions.push(`status = $${paramIndex}`);
+      params.push(status);
+      paramIndex++;
     }
     
+    // Add type filter (buy/sell) if provided
+    if (type) {
+      conditions.push(`type = $${paramIndex}`);
+      params.push(type);
+      paramIndex++;
+    }
+    
+    // Add currency filter if provided
+    if (currency) {
+      conditions.push(`currency = $${paramIndex}`);
+      params.push(currency);
+      paramIndex++;
+    }
+    
+    // Build the WHERE clause
+    let sql = `SELECT * FROM trades`;
+    
+    if (conditions.length > 0) {
+      sql += ` WHERE ${conditions.join(' AND ')}`;
+    }
+    
+    // Add ordering
+    sql += ` ORDER BY created_at DESC`;
+    
+    // Add limit if provided
+    if (limit && !isNaN(parseInt(limit))) {
+      sql += ` LIMIT $${paramIndex}`;
+      params.push(parseInt(limit));
+    }
+    
+    console.log('Trade query SQL:', sql);
+    console.log('Trade query params:', params);
+    
     const result = await query(sql, params);
-    res.json(result.rows);
+    
+    // Include user details for each trade
+    const tradesWithUsers = await Promise.all(result.rows.map(async (trade) => {
+      const userResult = await query('SELECT id, username, full_name, rating FROM users WHERE id = $1', [trade.user_id]);
+      const user = userResult.rows[0] || { username: 'Unknown', full_name: 'Unknown User' };
+      
+      // Also get counterparty details if available
+      let counterparty = null;
+      if (trade.counterparty_id) {
+        const counterpartyResult = await query('SELECT id, username, full_name, rating FROM users WHERE id = $1', [trade.counterparty_id]);
+        counterparty = counterpartyResult.rows[0] || { username: 'Unknown', full_name: 'Unknown User' };
+      }
+      
+      return {
+        ...trade,
+        user: {
+          id: user.id,
+          username: user.username,
+          fullName: user.full_name,
+          rating: user.rating
+        },
+        counterparty: counterparty ? {
+          id: counterparty.id,
+          username: counterparty.username,
+          fullName: counterparty.full_name,
+          rating: counterparty.rating
+        } : null
+      };
+    }));
+    
+    res.json(tradesWithUsers);
   } catch (err) {
     console.error('Error fetching trades:', err);
     res.status(500).json({ message: 'Failed to fetch trades' });
   }
 });
 
-// Get a specific trade by ID
+// Get a specific trade by ID with user details and messages
 router.get('/:id', async (req, res) => {
   try {
     const tradeId = req.params.id;
@@ -55,12 +123,97 @@ router.get('/:id', async (req, res) => {
     
     const trade = result.rows[0];
     
-    // Check if user is authorized to view this trade
-    if (trade.user_id !== req.user.id && trade.counterparty_id !== req.user.id && !req.user.is_admin) {
-      return res.status(403).json({ message: 'Not authorized to view this trade' });
+    // Check if user is authorized to view this trade (if not public active trade)
+    // Anyone can view active trades that need a counterparty
+    if (!(trade.status === 'active' && trade.counterparty_id === null)) {
+      if (!req.user || (trade.user_id !== req.user.id && trade.counterparty_id !== req.user.id && !req.user.is_admin)) {
+        return res.status(403).json({ message: 'Not authorized to view this trade' });
+      }
     }
     
-    res.json(trade);
+    // Get creator user details
+    const userResult = await query(
+      'SELECT id, username, full_name, rating, completed_trades FROM users WHERE id = $1',
+      [trade.user_id]
+    );
+    const user = userResult.rows[0] || { username: 'Unknown', full_name: 'Unknown User' };
+    
+    // Get counterparty details if available
+    let counterparty = null;
+    if (trade.counterparty_id) {
+      const counterpartyResult = await query(
+        'SELECT id, username, full_name, rating, completed_trades FROM users WHERE id = $1',
+        [trade.counterparty_id]
+      );
+      counterparty = counterpartyResult.rows[0] || { username: 'Unknown', full_name: 'Unknown User' };
+    }
+    
+    // Get messages if the user is authenticated and part of the trade
+    let messages = [];
+    let disputes = [];
+    let ratings = [];
+    
+    if (req.user && (trade.user_id === req.user.id || trade.counterparty_id === req.user.id || req.user.is_admin)) {
+      // Get messages
+      const messagesResult = await query(
+        'SELECT * FROM messages WHERE trade_id = $1 ORDER BY created_at ASC',
+        [tradeId]
+      );
+      messages = messagesResult.rows;
+      
+      // Get disputes
+      const disputesResult = await query(
+        'SELECT * FROM disputes WHERE trade_id = $1',
+        [tradeId]
+      );
+      disputes = disputesResult.rows;
+      
+      // Get ratings
+      const ratingsResult = await query(
+        'SELECT r.*, u.username as rater_username, u.full_name as rater_full_name FROM ratings r JOIN users u ON r.rater_id = u.id WHERE r.trade_id = $1',
+        [tradeId]
+      );
+      ratings = ratingsResult.rows;
+      
+      // Mark messages as read if recipient is current user
+      if (req.user) {
+        await query(
+          'UPDATE messages SET read = TRUE WHERE trade_id = $1 AND recipient_id = $2 AND read = FALSE',
+          [tradeId, req.user.id]
+        );
+      }
+    }
+    
+    // Format the response
+    const tradeWithDetails = {
+      ...trade,
+      user: {
+        id: user.id,
+        username: user.username,
+        fullName: user.full_name,
+        rating: user.rating,
+        completedTrades: user.completed_trades
+      },
+      counterparty: counterparty ? {
+        id: counterparty.id,
+        username: counterparty.username,
+        fullName: counterparty.full_name,
+        rating: counterparty.rating,
+        completedTrades: counterparty.completed_trades
+      } : null,
+      messages,
+      disputes,
+      ratings,
+      // Add calculated fields that might be useful for the frontend
+      isCompleted: trade.status === 'completed',
+      isCancelled: trade.status === 'cancelled',
+      isDisputed: trade.status === 'disputed',
+      isPending: trade.status === 'pending',
+      isActive: trade.status === 'active',
+      totalValue: parseFloat(trade.amount) * parseFloat(trade.price)
+    };
+    
+    res.json(tradeWithDetails);
   } catch (err) {
     console.error('Error fetching trade:', err);
     res.status(500).json({ message: 'Failed to fetch trade' });

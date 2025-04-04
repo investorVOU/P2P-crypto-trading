@@ -4,7 +4,9 @@ const session = require('express-session');
 const connectPg = require('connect-pg-simple');
 const { scrypt, randomBytes, timingSafeEqual } = require('crypto');
 const { promisify } = require('util');
-const { query, pool } = require('./db');
+const { pool } = require('./db');
+const { storage } = require('./storage.cjs');
+const { generateWalletNonce, verifyWalletSignature } = require('./walletAuth');
 
 const PostgresSessionStore = connectPg(session);
 const scryptAsync = promisify(scrypt);
@@ -23,12 +25,17 @@ async function comparePasswords(supplied, stored) {
 }
 
 function setupAuth(app) {
-  // Session configuration
-  app.use(session({
-    store: new PostgresSessionStore({
+  // Initialize session store if not already done
+  if (!storage.sessionStore) {
+    storage.sessionStore = new PostgresSessionStore({
       pool,
       tableName: 'session'
-    }),
+    });
+  }
+
+  // Session configuration
+  app.use(session({
+    store: storage.sessionStore,
     secret: process.env.SESSION_SECRET || 'development-secret',
     resave: false,
     saveUninitialized: false,
@@ -47,8 +54,7 @@ function setupAuth(app) {
   // Configure local strategy
   passport.use(new LocalStrategy(async (username, password, done) => {
     try {
-      const result = await query('SELECT * FROM users WHERE username = $1', [username]);
-      const user = result.rows[0];
+      const user = await storage.getUserByUsername(username);
       
       if (!user) {
         return done(null, false, { message: 'Incorrect username or password' });
@@ -73,15 +79,16 @@ function setupAuth(app) {
 
   passport.deserializeUser(async (id, done) => {
     try {
-      const result = await query('SELECT * FROM users WHERE id = $1', [id]);
-      const user = result.rows[0];
+      const user = await storage.getUser(id);
       if (!user) {
         return done(null, false);
       }
       
-      // Omit password from user object
-      delete user.password;
-      done(null, user);
+      // Omit password from user object for security
+      const userWithoutPassword = { ...user };
+      delete userWithoutPassword.password;
+      
+      done(null, userWithoutPassword);
     } catch (err) {
       done(err);
     }
@@ -92,29 +99,45 @@ function setupAuth(app) {
     try {
       const { username, email, password, fullName } = req.body;
       
-      // Check if username already exists
-      const existingUser = await query('SELECT * FROM users WHERE username = $1 OR email = $2', [username, email]);
-      if (existingUser.rows.length > 0) {
-        return res.status(400).json({ message: 'Username or email already in use' });
+      // Check if username or email already exists
+      const existingUserByUsername = await storage.getUserByUsername(username);
+      
+      if (existingUserByUsername) {
+        return res.status(400).json({ message: 'Username already in use' });
       }
       
       // Hash password and create user
       const hashedPassword = await hashPassword(password);
-      const result = await query(
-        'INSERT INTO users (username, email, password, full_name) VALUES ($1, $2, $3, $4) RETURNING id, username, email, full_name, is_admin, created_at',
-        [username, email, hashedPassword, fullName]
-      );
       
-      const newUser = result.rows[0];
+      const newUser = await storage.createUser({
+        username,
+        email,
+        password: hashedPassword,
+        fullName
+      });
+      
+      // Clone user object without password for security
+      const userToReturn = { ...newUser };
+      delete userToReturn.password;
       
       // Log in the new user
       req.login(newUser, (err) => {
         if (err) {
           return next(err);
         }
-        return res.status(201).json(newUser);
+        return res.status(201).json(userToReturn);
       });
     } catch (err) {
+      console.error('Registration error:', err);
+      
+      // Check for uniqueness violation (PostgreSQL error code 23505)
+      if (err.code === '23505') {
+        if (err.constraint === 'users_email_key') {
+          return res.status(400).json({ message: 'Email already in use' });
+        }
+        return res.status(400).json({ message: 'Username or email already in use' });
+      }
+      
       next(err);
     }
   });
@@ -153,6 +176,69 @@ function setupAuth(app) {
       return res.json(req.user);
     }
     res.status(401).json({ message: 'Not authenticated' });
+  });
+  
+  // Wallet authentication endpoints
+  app.get('/api/wallet/nonce/:address', async (req, res) => {
+    try {
+      const { address } = req.params;
+      if (!address || !address.match(/^0x[a-fA-F0-9]{40}$/)) {
+        return res.status(400).json({ message: 'Invalid wallet address format' });
+      }
+      
+      const nonce = await generateWalletNonce(address);
+      res.json({ nonce });
+    } catch (err) {
+      console.error('Error generating nonce:', err);
+      res.status(500).json({ message: 'Failed to generate nonce' });
+    }
+  });
+  
+  app.post('/api/wallet/auth', async (req, res, next) => {
+    try {
+      const { address, signature } = req.body;
+      
+      if (!address || !signature) {
+        return res.status(400).json({ message: 'Address and signature required' });
+      }
+      
+      const verified = await verifyWalletSignature(address, signature);
+      if (!verified) {
+        return res.status(401).json({ message: 'Invalid signature' });
+      }
+      
+      // Check if user exists with this wallet address
+      let user = await storage.getUserByWalletAddress(address.toLowerCase());
+      
+      if (!user) {
+        // Create a new user with wallet address
+        const username = `wallet_${address.substring(2, 8)}`;
+        const email = `${username}@example.com`;
+        const password = await hashPassword(randomBytes(32).toString('hex'));
+        
+        user = await storage.createUser({
+          username,
+          email,
+          password,
+          walletAddress: address.toLowerCase()
+        });
+      }
+      
+      // Clone user object without password for security
+      const userToReturn = { ...user };
+      delete userToReturn.password;
+      
+      // Log in the user
+      req.login(user, (err) => {
+        if (err) {
+          return next(err);
+        }
+        return res.status(200).json(userToReturn);
+      });
+    } catch (err) {
+      console.error('Wallet auth error:', err);
+      next(err);
+    }
   });
 
   // Middleware for route protection

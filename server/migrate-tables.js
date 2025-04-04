@@ -9,6 +9,7 @@ async function createTables() {
       password VARCHAR(255) NOT NULL,
       full_name VARCHAR(255),
       verified BOOLEAN DEFAULT FALSE,
+      wallet_address VARCHAR(255) UNIQUE,
       completed_trades INT DEFAULT 0,
       success_rate NUMERIC(5,2) DEFAULT 0,
       response_time INT DEFAULT 0,
@@ -115,6 +116,14 @@ async function createTables() {
       CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
     );
   `;
+  
+  const walletNoncesTable = `
+    CREATE TABLE IF NOT EXISTS wallet_nonces (
+      address VARCHAR(255) PRIMARY KEY,
+      nonce TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+  `;
 
   try {
     await query(userTable);
@@ -143,6 +152,9 @@ async function createTables() {
     
     await query(sessionsTable);
     console.log('Sessions table created or already exists');
+    
+    await query(walletNoncesTable);
+    console.log('Wallet nonces table created or already exists');
     
     return true;
   } catch (error) {

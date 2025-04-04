@@ -6,9 +6,10 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: varchar("username", { length: 50 }).unique().notNull(),
   email: varchar("email", { length: 100 }).unique().notNull(),
-  fullName: varchar("full_name", { length: 100 }).notNull(),
-  password: varchar("password", { length: 255 }).notNull(), // Added password field
+  fullName: varchar("full_name", { length: 100 }),
+  password: varchar("password", { length: 255 }).notNull(),
   verified: boolean("verified").default(false),
+  walletAddress: varchar("wallet_address", { length: 255 }).unique(),
   completedTrades: integer("completed_trades").default(0),
   successRate: decimal("success_rate").default("0"),
   responseTime: integer("response_time").default(0),
@@ -123,6 +124,16 @@ export const transactions = pgTable("transactions", {
 
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertTransaction = typeof transactions.$inferInsert;
+
+// Wallet nonces table for wallet authentication
+export const walletNonces = pgTable("wallet_nonces", {
+  address: varchar("address", { length: 255 }).primaryKey(),
+  nonce: text("nonce").notNull(),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export type WalletNonce = typeof walletNonces.$inferSelect;
+export type InsertWalletNonce = typeof walletNonces.$inferInsert;
 
 // Define relations
 export const usersRelations = relations(users, ({ many }) => ({

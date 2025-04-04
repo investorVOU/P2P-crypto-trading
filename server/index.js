@@ -74,8 +74,9 @@ app.use((req, res, next) => {
 const { isAuthenticated, isAdmin } = setupAuth(app);
 
 // Define the registration, login and user routes directly
-// API Routes with authentication middleware
-app.use('/api/trades', isAuthenticated, tradeRoutes);
+// API Routes with mixed authentication requirements
+// Trades routes - some endpoints need auth, others don't
+app.use('/api/trades', tradeRoutes); // Auth checked inside specific routes
 app.use('/api/users', userRoutes); // Some endpoints public, auth checked inside
 app.use('/api/wallet', isAuthenticated, walletRoutes);
 app.use('/api/admin', isAuthenticated, isAdmin, adminRoutes);

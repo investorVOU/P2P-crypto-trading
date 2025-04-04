@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { login } from '../../features/auth/authSlice';
 import Layout from '../../components/Layout';
+import axios from 'axios';
+import { ethers } from 'ethers';
 
 function LoginPage() {
   const dispatch = useDispatch();
@@ -13,6 +15,8 @@ function LoginPage() {
     username: '',
     password: ''
   });
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [walletError, setWalletError] = useState(null);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -34,6 +38,61 @@ function LoginPage() {
   const handleSubmit = (e) => {
     e.preventDefault();
     dispatch(login(formData));
+  };
+  
+  const connectWallet = async () => {
+    if (!window.ethereum) {
+      setWalletError('No Ethereum wallet detected. Please install MetaMask or another Web3 wallet.');
+      return;
+    }
+    
+    setWalletLoading(true);
+    setWalletError(null);
+    
+    try {
+      // Request account access
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const accounts = await provider.send('eth_requestAccounts', []);
+      const address = accounts[0];
+      
+      if (!address) {
+        throw new Error('No account selected');
+      }
+      
+      // Get nonce from server
+      const nonceResponse = await axios.get(`/api/wallet/nonce/${address}`);
+      const { nonce } = nonceResponse.data;
+      
+      // Sign the nonce with the wallet
+      const signer = await provider.getSigner();
+      const signature = await signer.signMessage(nonce);
+      
+      // Authenticate with the server
+      const authResponse = await axios.post('/api/wallet/auth', {
+        address,
+        signature
+      });
+      
+      // Handle successful authentication
+      if (authResponse.status === 200) {
+        dispatch({ 
+          type: 'auth/login/fulfilled', 
+          payload: authResponse.data 
+        });
+        
+        // Redirect based on user role
+        if (authResponse.data.is_admin) {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard');
+        }
+      }
+    } catch (err) {
+      console.error('Wallet connection error:', err);
+      setWalletError(err.response?.data || err.message || 'Error connecting wallet');
+    } finally {
+      setWalletLoading(false);
+    }
   };
 
   return (
@@ -73,7 +132,7 @@ function LoginPage() {
               </div>
             </div>
 
-            {error && (
+            {(error || walletError) && (
               <div className="mt-4 bg-red-50 border-l-4 border-red-500 p-4">
                 <div className="flex">
                   <div className="flex-shrink-0">
@@ -82,7 +141,7 @@ function LoginPage() {
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <p className="text-sm text-red-700">{error}</p>
+                    <p className="text-sm text-red-700">{error || walletError}</p>
                   </div>
                 </div>
               </div>
@@ -178,36 +237,33 @@ function LoginPage() {
                 </div>
               </div>
 
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <div>
-                  <a
-                    href="#"
-                    className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                  >
-                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                      <path
-                        fillRule="evenodd"
-                        d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </a>
-                </div>
-
-                <div>
-                  <a
-                    href="#"
-                    className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                  >
-                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                      <path
-                        fillRule="evenodd"
-                        d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </a>
-                </div>
+              <div className="mt-6 grid gap-3">
+                <button
+                  type="button"
+                  onClick={connectWallet}
+                  disabled={walletLoading}
+                  className={`w-full inline-flex justify-center items-center py-3 px-4 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 ${
+                    walletLoading ? 'opacity-75 cursor-not-allowed' : ''
+                  }`}
+                >
+                  {walletLoading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Connecting wallet...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M4 4C2.89543 4 2 4.89543 2 6V7H18V6C18 4.89543 17.1046 4 16 4H4Z" />
+                        <path fillRule="evenodd" clipRule="evenodd" d="M18 9H2V14C2 15.1046 2.89543 16 4 16H16C17.1046 16 18 15.1046 18 14V9ZM4 13C4 12.4477 4.44772 12 5 12H6C6.55228 12 7 12.4477 7 13C7 13.5523 6.55228 14 6 14H5C4.44772 14 4 13.5523 4 13ZM9 12C8.44772 12 8 12.4477 8 13C8 13.5523 8.44772 14 9 14H10C10.5523 14 11 13.5523 11 13C11 12.4477 10.5523 12 10 12H9Z" />
+                      </svg>
+                      Connect Wallet
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
