@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const path = require('path');
+const fs = require('fs');
 const tradeRoutes = require('./routes/trades');
 const userRoutes = require('./routes/users');
 const walletRoutes = require('./routes/wallet');
@@ -30,6 +32,9 @@ app.use('/api/users', userRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/admin', adminRoutes);
 
+// Serve static assets
+app.use(express.static(path.join(__dirname, '..')));
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
@@ -41,12 +46,38 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Root route
+// Root route - serve HTML
 app.get('/', (req, res) => {
-  res.json({
-    message: 'P2P Trading Platform API',
-    version: '1.0.0'
-  });
+  const indexPath = path.join(__dirname, '..', 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.json({
+      message: 'P2P Trading Platform API',
+      version: '1.0.0'
+    });
+  }
+});
+
+// API documentation route
+app.get('/api', (req, res) => {
+  const apiDocPath = path.join(__dirname, '..', 'public', 'api.html');
+  if (fs.existsSync(apiDocPath)) {
+    res.sendFile(apiDocPath);
+  } else {
+    res.json({
+      message: 'P2P Trading Platform API Documentation',
+      version: '1.0.0',
+      endpoints: [
+        { method: 'GET', path: '/api/trades', description: 'Get all trades' },
+        { method: 'GET', path: '/api/trades/:id', description: 'Get a specific trade' },
+        { method: 'POST', path: '/api/trades', description: 'Create a new trade' },
+        { method: 'PUT', path: '/api/trades/:id/status', description: 'Update trade status' },
+        { method: 'GET', path: '/api/wallet/balances', description: 'Get wallet balances' },
+        { method: 'GET', path: '/api/wallet/transactions', description: 'Get wallet transactions' }
+      ]
+    });
+  }
 });
 
 // Start the server

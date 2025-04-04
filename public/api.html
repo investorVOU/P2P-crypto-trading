@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>P2P Trading Platform API</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body, html {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f9fafb;
+      color: #1F2937;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    header {
+      background-color: #3B82F6;
+      color: white;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    main {
+      padding: 2rem 0;
+    }
+    h1, h2, h3, h4 {
+      margin-bottom: 1rem;
+    }
+    .endpoint {
+      background-color: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .method {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .get {
+      background-color: #DBEAFE;
+      color: #1E40AF;
+    }
+    .post {
+      background-color: #DEF7EC;
+      color: #046C4E;
+    }
+    .put {
+      background-color: #FEF3C7;
+      color: #92400E;
+    }
+    .delete {
+      background-color: #FEE2E2;
+      color: #B91C1C;
+    }
+    .url {
+      font-family: monospace;
+      font-size: 1rem;
+      padding: 0.5rem;
+      background-color: #F3F4F6;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+      display: inline-block;
+    }
+    .description {
+      margin-bottom: 1rem;
+      line-height: 1.5;
+    }
+    .params {
+      margin-bottom: 1rem;
+    }
+    .params h4 {
+      margin-bottom: 0.5rem;
+    }
+    .params ul {
+      list-style-type: none;
+      padding-left: 1rem;
+    }
+    .params li {
+      margin-bottom: 0.5rem;
+    }
+    .param-name {
+      font-family: monospace;
+      font-weight: 600;
+    }
+    .param-type {
+      font-size: 0.875rem;
+      color: #6B7280;
+      margin-left: 0.5rem;
+    }
+    .response {
+      background-color: #F3F4F6;
+      border-radius: 4px;
+      padding: 1rem;
+      font-family: monospace;
+      white-space: pre-wrap;
+      font-size: 0.875rem;
+      overflow-x: auto;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      color: white;
+      background-color: #6B7280;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>P2P Trading Platform API</h1>
+    <a class="btn" href="/">Back to Home</a>
+  </header>
+
+  <div class="container">
+    <main>
+      <h2>Available Endpoints</h2>
+
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="url">/api/trades</span>
+        <div class="description">Get all available trades.</div>
+        <div class="response">[
+  {
+    "id": 1,
+    "type": "buy",
+    "amount": 0.5,
+    "price": 40000,
+    "currency": "BTC",
+    "status": "open",
+    "createdAt": "2025-04-04T07:36:34.156Z",
+    "counterparty": {
+      "id": 2,
+      "username": "seller123",
+      "rating": 4.8
+    }
+  },
+  ...
+]</div>
+      </div>
+
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="url">/api/trades/:id</span>
+        <div class="description">Get details for a specific trade.</div>
+        <div class="params">
+          <h4>Path Parameters:</h4>
+          <ul>
+            <li><span class="param-name">id</span> <span class="param-type">number</span> - The ID of the trade</li>
+          </ul>
+        </div>
+        <div class="response">{
+  "id": 1,
+  "type": "buy",
+  "amount": 0.5,
+  "price": 40000,
+  "currency": "BTC",
+  "status": "open",
+  "createdAt": "2025-04-04T07:36:34.156Z",
+  "counterparty": {
+    "id": 2,
+    "username": "seller123",
+    "rating": 4.8
+  }
+}</div>
+      </div>
+
+      <div class="endpoint">
+        <span class="method post">POST</span>
+        <span class="url">/api/trades</span>
+        <div class="description">Create a new trade.</div>
+        <div class="params">
+          <h4>Request Body:</h4>
+          <ul>
+            <li><span class="param-name">type</span> <span class="param-type">string</span> - Trade type ("buy" or "sell")</li>
+            <li><span class="param-name">amount</span> <span class="param-type">number</span> - The amount to trade</li>
+            <li><span class="param-name">currency</span> <span class="param-type">string</span> - The currency (BTC, ETH, USDT, USD)</li>
+            <li><span class="param-name">price</span> <span class="param-type">number</span> - (Optional) Price per unit</li>
+            <li><span class="param-name">paymentMethod</span> <span class="param-type">string</span> - (Optional) Payment method</li>
+          </ul>
+        </div>
+        <div class="response">{
+  "id": 6,
+  "type": "buy",
+  "amount": 0.5,
+  "price": 41250.32,
+  "currency": "BTC",
+  "status": "open",
+  "createdAt": "2025-04-04T07:45:12.423Z",
+  "paymentMethod": "Bank Transfer",
+  "counterparty": {
+    "id": 2,
+    "username": "seller123",
+    "rating": 4.8
+  }
+}</div>
+      </div>
+
+      <div class="endpoint">
+        <span class="method put">PUT</span>
+        <span class="url">/api/trades/:id/status</span>
+        <div class="description">Update the status of a trade.</div>
+        <div class="params">
+          <h4>Path Parameters:</h4>
+          <ul>
+            <li><span class="param-name">id</span> <span class="param-type">number</span> - The ID of the trade</li>
+          </ul>
+          <h4>Request Body:</h4>
+          <ul>
+            <li><span class="param-name">status</span> <span class="param-type">string</span> - New status (open, in_escrow, completed, disputed, cancelled)</li>
+          </ul>
+        </div>
+        <div class="response">{
+  "id": 1,
+  "type": "buy",
+  "amount": 0.5,
+  "price": 40000,
+  "currency": "BTC",
+  "status": "in_escrow",
+  "createdAt": "2025-04-04T07:36:34.156Z",
+  "updatedAt": "2025-04-04T07:45:32.782Z",
+  "counterparty": {
+    "id": 2,
+    "username": "seller123",
+    "rating": 4.8
+  }
+}</div>
+      </div>
+
+      <h3>More API Documentation</h3>
+      <p>For a complete list of endpoints and details, please refer to our comprehensive API documentation.</p>
+      <p>This includes endpoints for:</p>
+      <ul style="margin-left: 2rem; margin-bottom: 1rem;">
+        <li>User authentication and profile management</li>
+        <li>Wallet operations (deposits, withdrawals, transactions)</li>
+        <li>Trade messaging</li>
+        <li>Dispute creation and resolution</li>
+        <li>Admin operations</li>
+      </ul>
+    </main>
+  </div>
+</body>
+</html>

@@ -32,3 +32,7 @@ waitForPort = 8000
 
 [deployment]
 run = ["sh", "-c", "cd server && npm install && node index.js"]
+
+[[ports]]
+localPort = 8000
+externalPort = 80
