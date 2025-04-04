@@ -3,11 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { register } from '../../features/auth/authSlice';
 import WalletConnectButton from '../../components/WalletConnectButton';
+import { useWalletAuth } from '../../contexts/WalletAuthContext';
 
 function NewRegisterPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { isAuthenticated, loading, error } = useSelector((state) => state.auth) || {};
+  const { isWalletConnected, walletAddress, loading: walletLoading, disconnect } = useWalletAuth();
   
   const [formData, setFormData] = useState({
     username: '',
@@ -18,12 +20,19 @@ function NewRegisterPage() {
   
   const [passwordError, setPasswordError] = useState('');
 
-  // Redirect if already logged in
+  // Redirect if already logged in with traditional auth
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
+  
+  // Redirect if wallet is connected
+  useEffect(() => {
+    if (isWalletConnected) {
+      navigate('/dashboard');
+    }
+  }, [isWalletConnected, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

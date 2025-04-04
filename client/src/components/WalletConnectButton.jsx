@@ -9,10 +9,133 @@ const WalletConnectButton = ({ className, buttonText = "Connect Wallet" }) => {
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState('');
+
+  // Dynamically import ethers.js when component mounts
+  useEffect(() => {
+    async function loadEthers() {
+      try {
+        const ethersModule = await import('ethers');
+        ethers = ethersModule;
+        console.log('Ethers library loaded successfully');
+        
+        // Check if already connected
+        await checkIfWalletIsConnected();
+      } catch (error) {
+        console.error('Failed to load ethers library:', error);
+      }
+    }
+    
+    loadEthers();
+    
+    // Add event listeners for wallet events
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', () => window.location.reload());
+      window.ethereum.on('disconnect', handleDisconnect);
+    }
+    
+    return () => {
+      // Clean up event listeners
+      if (window.ethereum) {
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+        window.ethereum.removeListener('chainChanged', () => {});
+        window.ethereum.removeListener('disconnect', handleDisconnect);
+      }
+    };
+  }, []);
+  
+  // Check if wallet is already connected
+  const checkIfWalletIsConnected = async () => {
+    if (!window.ethereum || !ethers) return;
+    
+    try {
+      // Check if we're authorized to access the user's wallet
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const accounts = await provider.listAccounts();
+      
+      if (accounts.length > 0) {
+        // User is already connected
+        const address = accounts[0].address;
+        setIsConnected(true);
+        setWalletAddress(address);
+        
+        // Authenticate with the server
+        await authenticateWallet(address);
+      }
+    } catch (error) {
+      console.error('Error checking wallet connection:', error);
+    }
+  };
+  
+  // Handle when user changes accounts
+  const handleAccountsChanged = async (accounts) => {
+    if (accounts.length === 0) {
+      // User disconnected all accounts
+      setIsConnected(false);
+      setWalletAddress('');
+      // Dispatch logout action
+      dispatch({ type: 'auth/logout/fulfilled' });
+    } else {
+      // User switched accounts
+      setWalletAddress(accounts[0]);
+      await authenticateWallet(accounts[0]);
+    }
+  };
+  
+  // Handle disconnection
+  const handleDisconnect = () => {
+    setIsConnected(false);
+    setWalletAddress('');
+    // Dispatch logout action
+    dispatch({ type: 'auth/logout/fulfilled' });
+  };
+  
+  // Authenticate with the server
+  const authenticateWallet = async (address) => {
+    try {
+      if (!ethers || !address) return;
+      
+      // Get nonce from server
+      const nonceResponse = await axios.get(`/api/wallet/nonce/${address}`);
+      const { nonce } = nonceResponse.data;
+      
+      // Sign the nonce with the wallet
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const signature = await signer.signMessage(nonce);
+      
+      // Authenticate with the server
+      const authResponse = await axios.post('/api/wallet/auth', {
+        address,
+        signature
+      });
+      
+      // Handle successful authentication
+      if (authResponse.status === 200) {
+        dispatch({ 
+          type: 'auth/login/fulfilled', 
+          payload: authResponse.data 
+        });
+        
+        setIsConnected(true);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Authentication error:', error);
+      return false;
+    }
+  };
 
   const connectWallet = async () => {
+    // If already connected, don't do anything
+    if (isConnected) return;
+    
     if (!window.ethereum) {
-      setError('No Ethereum wallet detected. Please install MetaMask or another Web3 wallet.');
+      setError('No Ethereum wallet detected. Please install MetaMask, Trust Wallet or another Web3 wallet.');
       return;
     }
     
@@ -25,55 +148,46 @@ const WalletConnectButton = ({ className, buttonText = "Connect Wallet" }) => {
     setError(null);
     
     try {
-      // Request account access using window.ethereum directly if ethers isn't available
-      let address;
-      try {
-        // First try with ethers if available
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const accounts = await provider.send('eth_requestAccounts', []);
-        address = accounts[0];
-        
-        if (!address) {
-          throw new Error('No account selected');
-        }
-        
-        // Get nonce from server
-        const nonceResponse = await axios.get(`/api/wallet/nonce/${address}`);
-        const { nonce } = nonceResponse.data;
-        
-        // Sign the nonce with the wallet
-        const signer = await provider.getSigner();
-        const signature = await signer.signMessage(nonce);
-        
-        // Authenticate with the server
-        const authResponse = await axios.post('/api/wallet/auth', {
-          address,
-          signature
-        });
-        
-        // Handle successful authentication
-        if (authResponse.status === 200) {
-          dispatch({ 
-            type: 'auth/login/fulfilled', 
-            payload: authResponse.data 
-          });
-          
-          // Redirect based on user role is handled in the parent component
-        }
-      } catch (err) {
-        console.error('Error with wallet authentication:', err);
-        setError('Could not authenticate with wallet. Please try again.');
+      // Request account access
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const accounts = await provider.send('eth_requestAccounts', []);
+      const address = accounts[0];
+      
+      if (!address) {
+        throw new Error('No account selected');
+      }
+      
+      setWalletAddress(address);
+      
+      // Authenticate with the server
+      const success = await authenticateWallet(address);
+      
+      if (!success) {
+        throw new Error('Authentication failed');
       }
     } catch (err) {
       console.error('Wallet connection error:', err);
       setError(err.response?.data?.message || err.message || 'Error connecting wallet');
+      setIsConnected(false);
+      setWalletAddress('');
     } finally {
       setLoading(false);
     }
   };
+  
+  // For mobile detection
+  const isMobile = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  };
+  
+  // Opens wallet app if on mobile
+  const openMobileWallet = () => {
+    // This will work with various wallet apps that support deep linking
+    // Example for MetaMask
+    window.location.href = 'https://metamask.app.link/dapp/' + window.location.href.split('//')[1];
+  };
 
-  // Always render the button even if ethers isn't available
-  // We'll handle the error condition when the user clicks the button
+  // Render button based on connection state
   return (
     <div>
       {error && (
@@ -83,8 +197,8 @@ const WalletConnectButton = ({ className, buttonText = "Connect Wallet" }) => {
       )}
       <button
         type="button"
-        onClick={connectWallet}
-        disabled={loading}
+        onClick={isConnected ? () => {} : isMobile() ? openMobileWallet : connectWallet}
+        disabled={loading || isConnected}
         className={`inline-flex items-center justify-center px-4 py-2 ${className || 'border border-gray-300 rounded-md shadow-sm bg-white text-gray-700 hover:bg-gray-50'}`}
       >
         {loading ? (
@@ -94,6 +208,13 @@ const WalletConnectButton = ({ className, buttonText = "Connect Wallet" }) => {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
             Connecting...
+          </>
+        ) : isConnected ? (
+          <>
+            <svg className="h-4 w-4 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            {walletAddress.slice(0, 6) + '...' + walletAddress.slice(-4)}
           </>
         ) : (
           <>
