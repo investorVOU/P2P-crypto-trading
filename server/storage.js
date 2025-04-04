@@ -1,3 +1,4 @@
+
 const session = require('express-session');
 const connectPg = require('connect-pg-simple');
 const { pool } = require('./db');
@@ -38,6 +39,26 @@ class DatabaseStorage {
     return await db.select().from(users);
   }
 
+  // Trade methods
+  async getTrades(status = null) {
+    try {
+      let query = 'SELECT * FROM trades';
+      const params = [];
+      
+      if (status) {
+        query += ' WHERE status = $1';
+        params.push(status);
+      }
+      
+      query += ' ORDER BY created_at DESC';
+      const result = await pool.query(query, params);
+      return result.rows;
+    } catch (error) {
+      console.error('Error getting trades:', error);
+      throw error;
+    }
+  }
+
   // Wallet authentication methods
   async getUserByWalletAddress(address) {
     const [user] = await db.select().from(users).where(eq(users.walletAddress, address));
@@ -50,11 +71,9 @@ class DatabaseStorage {
   }
   
   async createOrUpdateWalletNonce(address, nonce) {
-    // Check if nonce exists for this address
     const existingNonce = await this.getWalletNonce(address);
     
     if (existingNonce) {
-      // Update existing nonce
       const [updatedNonce] = await db
         .update(walletNonces)
         .set({ 
@@ -65,7 +84,6 @@ class DatabaseStorage {
         .returning();
       return updatedNonce;
     } else {
-      // Create new nonce
       const [newNonce] = await db
         .insert(walletNonces)
         .values({
@@ -76,31 +94,9 @@ class DatabaseStorage {
       return newNonce;
     }
   }
-
-  // Other methods can be added as needed
 }
 
 // Create and export an instance of the storage
 const storage = new DatabaseStorage();
 
-async function getTrades(status = null) {
-  try {
-    let query = 'SELECT * FROM trades';
-    const params = [];
-    
-    if (status) {
-      query += ' WHERE status = $1';
-      params.push(status);
-    }
-    
-    query += ' ORDER BY created_at DESC';
-    const result = await db.query(query, params);
-    return result.rows;
-  } catch (error) {
-    console.error('Error getting trades:', error);
-    throw error;
-  }
-}
-
-module.exports = {
-  getTrades, storage };
+module.exports = { storage };
