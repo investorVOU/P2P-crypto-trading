@@ -94,16 +94,27 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Root route - serve HTML
+// Root route - serve client app
 app.get('/', (req, res) => {
-  const indexPath = path.join(__dirname, '..', 'index.html');
+  const indexPath = path.join(__dirname, '../client/dist/index.html');
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
     res.json({
       message: 'P2P Trading Platform API',
-      version: '1.0.0'
+      version: '1.0.0',
+      error: 'Client app not built yet. Run "npm run build" in the client directory.'
     });
+  }
+});
+
+// Handle client-side routing with React Router
+app.get('/dashboard', (req, res) => {
+  const indexPath = path.join(__dirname, '../client/dist/index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.redirect('/');
   }
 });
 
