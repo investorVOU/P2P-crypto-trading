@@ -7,6 +7,10 @@ import HomePage from './pages/HomePage';
 import TradesPage from './pages/TradesPage';
 import TradeDetailPage from './pages/TradeDetailPage';
 import CreateTradePage from './pages/CreateTradePage';
+import AdminLoginPage from './pages/AdminLoginPage'; // Import AdminLoginPage
+import AdminDashboard from './pages/AdminDashboard'; // Import AdminDashboard
+import NotFoundPage from './pages/NotFoundPage';     //Import NotFoundPage
+
 
 const App = () => {
   return (
@@ -14,14 +18,15 @@ const App = () => {
       <Router>
         <div className="min-h-screen bg-gray-50 flex flex-col">
           <WalletStatusBar />
-          
+
           <main className="flex-grow">
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<HomePage />} />
               <Route path="/trades" element={<TradesPage />} />
               <Route path="/trades/:id" element={<TradeDetailPage />} />
-              
+              <Route path="/admin/login" element={<AdminLoginPage />} />
+
               {/* Protected routes */}
               <Route 
                 path="/create-trade" 
@@ -31,33 +36,21 @@ const App = () => {
                   </ProtectedRoute>
                 } 
               />
-              
+
               {/* Admin routes */}
               <Route 
                 path="/admin/*" 
                 element={
                   <ProtectedRoute adminRequired={true}>
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                      <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-                      <p className="mt-2">Admin interface coming soon...</p>
-                    </div>
+                    <AdminDashboard />
                   </ProtectedRoute>
                 } 
               />
-              
+
               {/* Catch-all route for 404 */}
-              <Route 
-                path="*" 
-                element={
-                  <div className="flex justify-center items-center min-h-screen flex-col">
-                    <h1 className="text-4xl font-bold text-gray-900">404</h1>
-                    <p className="mt-2 text-lg text-gray-600">Page not found</p>
-                  </div>
-                } 
-              />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </main>
-          
           <footer className="bg-white border-t border-gray-200 py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between items-center">
